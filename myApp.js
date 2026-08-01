@@ -1256,6 +1256,8 @@ app.get(
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
+      const start = Date.now();
+
       const salesStats = await Order.aggregate([
         { $match: { createdAt: { $gte: sevenDaysAgo } } },
         {
@@ -1266,6 +1268,8 @@ app.get(
           },
         },
       ]);
+
+      console.log("salesStats:", Date.now() - start, "ms");
 
       const statusGroup = await Order.aggregate([
         { $match: { createdAt: { $gte: sevenDaysAgo } } },
