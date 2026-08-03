@@ -14,7 +14,7 @@ const Order = require("./models/Order");
 const app = express();
 app.set("trust proxy", 1);
 app.use(cors());
-app.use(express.json({ limit: "10kb" }));
+app.use(express.json({ limit: "15kb" }));
 app.use((req, res, next) => {
   console.log(req.ip, req.method, req.path);
   next();
@@ -936,7 +936,7 @@ app.post(
   async (req, res) => {
     try {
       const { guestId } = req.params;
-      const { itemId, purchaseDetails } = req.body;
+      const { purchaseDetails } = req.body;
 
       if (!UUID_V4_REGEX.test(guestId || "")) {
         return res.status(400).json({
@@ -949,31 +949,6 @@ app.post(
         return res.status(400).json({
           success: false,
           message: "بيانات الشراء غير صالحة!",
-        });
-      }
-
-      if (!Array.isArray(itemId) || itemId.length === 0) {
-        return res.status(400).json({
-          success: false,
-          message: "يرجى تحديد منتج واحد على الأقل لإتمام الشراء!",
-        });
-      }
-
-      const isValidIds = itemId.every((id) =>
-        mongoose.Types.ObjectId.isValid(id),
-      );
-
-      if (!isValidIds) {
-        return res.status(400).json({
-          success: false,
-          message: "عذراً، بعض المنتجات في سلتك غير صالحة!",
-        });
-      }
-
-      if (typeof purchaseDetails !== "object") {
-        return res.status(400).json({
-          success: false,
-          message: "بيانات الشراء غير صحيحة",
         });
       }
 
@@ -1025,21 +1000,21 @@ app.post(
         });
       }
 
-      const freshItems = await Item.find({ _id: { $in: itemId } });
+      const cart = await Cart.findOne({ guestId }).populate("items.itemId");
 
-      if (!freshItems || freshItems?.length !== itemId.length) {
-        return res.status(400).json({
+      if (!cart || !cart.items || cart.items.length === 0) {
+        return res.status(404).json({
           success: false,
-          message:
-            "عذراً، بعض المنتجات في سلتك لم تعد متوفرة حالياً أو تم حذفها!",
+          error: "السلة فارغة أو غير موجودة!",
         });
       }
 
-      const cart = await Cart.findOne({ guestId }).populate("items.itemId");
-
-      if (!cart) {
-        return res.status(404).json({
+      const hasMissingItem = cart.items.some((item) => !item.itemId);
+      if (hasMissingItem) {
+        return res.status(400).json({
           success: false,
+          message:
+            "عذراً، بعض المنتجات في سلتك لم تعد متوفرة حالياً، يرجى تحديث السلة!",
         });
       }
 
@@ -1055,7 +1030,7 @@ app.post(
         if (item.quantity > item.itemId.itemQuantity) {
           return res.status(400).json({
             success: false,
-            message: `المنتج ${item?.itemId?.itemName} لم يعد موجود`,
+            message: `الكمية المطلوبة من المنتج "${item.itemId.itemName}" غير متوفرة حالياً`,
           });
         }
 
@@ -1072,6 +1047,7 @@ app.post(
       order.totalPrice = totalAmount;
 
       const stockUpdates = [];
+
       for (const item of cart.items) {
         const updatedItem = await Item.findOneAndUpdate(
           { _id: item.itemId._id, itemQuantity: { $gte: item.quantity } },
@@ -1347,7 +1323,7 @@ app.get(
   },
 );
 
-app.get("/health", (req, res) => {
+app.get("/health", createLimiter(1000), (req, res) => {
   return res.status(200).json({ status: "ok" });
 });
 
