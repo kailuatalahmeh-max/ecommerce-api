@@ -1,31 +1,19 @@
 const mongoose = require("mongoose");
+const crypto = require("crypto");
+const GuestSession = require("../models/GuestSession");
 const Order = require("../models/Order");
 const Item = require("../models/Item");
 const Cart = require("../models/Cart");
-const { UUID_V4_REGEX, COUNTRY_CODES } = require("../utils/constants");
 
 exports.directPurchase = async (req, res) => {
   try {
-    const { purchaseDetails, itemId, quantity } = req.body;
+    const { purchaseDetails } = req;
 
-    if (!purchaseDetails) {
-      return res.status(400).json({
-        success: false,
-        message: "بيانات الشراء غير موجودة",
-      });
-    }
+    const { itemId, quantity } = req.body;
 
     const { fullName, countryCode, phoneNumber, region } = purchaseDetails;
 
-    if (
-      !fullName ||
-      !phoneNumber ||
-      !region ||
-      !quantity ||
-      !itemId ||
-      !countryCode ||
-      quantity <= 0
-    ) {
+    if (!itemId || !Number.isInteger(quantity) || quantity <= 0) {
       return res.status(400).json({
         success: false,
         message: "يرجى التأكد من تعبئة كافة البيانات بشكل صحيح!",
@@ -36,17 +24,6 @@ exports.directPurchase = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: "معرّف المنتج غير صالح!",
-      });
-    }
-
-    const countryFind = COUNTRY_CODES.find(
-      (country) => country.value === countryCode,
-    );
-
-    if (!countryFind) {
-      return res.status(400).json({
-        success: false,
-        message: "معرّف الدولة غير مدعوم",
       });
     }
 
@@ -88,9 +65,9 @@ exports.directPurchase = async (req, res) => {
     ];
 
     const orderCreated = await Order.create({
-      customerName: fullName.trim(),
-      phoneNumber: `${countryCode}${phoneNumber.trim()}`,
-      region: region.trim(),
+      customerName: fullName,
+      phoneNumber: `${countryCode}${phoneNumber}`,
+      region: region,
       items: order,
       totalPrice: totalPrice,
     });
@@ -114,64 +91,9 @@ exports.directPurchase = async (req, res) => {
 exports.cartPurchase = async (req, res) => {
   try {
     const { guestId } = req.params;
-    const { purchaseDetails } = req.body;
-
-    if (!UUID_V4_REGEX.test(guestId || "")) {
-      return res.status(400).json({
-        success: false,
-        message: "معرّف الجلسة غير صالح!",
-      });
-    }
-
-    if (!purchaseDetails || typeof purchaseDetails !== "object") {
-      return res.status(400).json({
-        success: false,
-        message: "بيانات الشراء غير صالحة!",
-      });
-    }
+    const { purchaseDetails } = req;
 
     const { fullName, countryCode, phoneNumber, region } = purchaseDetails;
-
-    if (!fullName || !phoneNumber || !region) {
-      return res.status(400).json({
-        success: false,
-        message: "يرجى التأكد من تعبئة البيانات بشكل صحيح!",
-      });
-    }
-
-    if (typeof phoneNumber !== "string") {
-      return res.status(400).json({
-        success: false,
-        message: "رقم الهاتف يجب أن يكون نصاً",
-      });
-    }
-
-    const cleanPhone = phoneNumber.replace(/\s+/g, "");
-
-    if (!/^\d+$/.test(cleanPhone)) {
-      return res.status(400).json({
-        success: false,
-        message: "رقم الهاتف غير صحيح",
-      });
-    }
-
-    if (cleanPhone.length !== 9) {
-      return res.status(400).json({
-        success: false,
-        message: "رقم الهاتف يجب أن يكون 9 أرقام",
-      });
-    }
-
-    const countryFind = COUNTRY_CODES.find(
-      (country) => country.value === countryCode,
-    );
-
-    if (!countryFind) {
-      return res.status(400).json({
-        success: false,
-        message: "معرف الدولة غير مدعوم",
-      });
-    }
 
     const cart = await Cart.findOne({ guestId }).populate("items.itemId");
 
@@ -194,7 +116,7 @@ exports.cartPurchase = async (req, res) => {
     let totalAmount = 0;
     let order = {
       customerName: fullName,
-      phoneNumber: `${countryCode}${cleanPhone}`,
+      phoneNumber: `${countryCode}${phoneNumber}`,
       region: region,
       items: [],
     };
@@ -303,15 +225,6 @@ exports.getMyOrders = async (req, res) => {
 
 exports.getAllOrdersForAdmin = async (req, res) => {
   try {
-    const allowedRoles = ["moderator", "super_admin"];
-
-    if (!allowedRoles.includes(req.admin?.role)) {
-      return res.status(403).json({
-        success: false,
-        message: "تعذر جلب البيانات",
-      });
-    }
-
     const orders = await Order.find().sort({ createdAt: -1 });
 
     return res.status(200).json({ success: true, data: orders || [] });
@@ -325,15 +238,7 @@ exports.getAllOrdersForAdmin = async (req, res) => {
 
 exports.updateOrderStatus = async (req, res) => {
   try {
-    const allowedRoles = ["moderator", "super_admin"];
     const allowedStatuses = ["Pending", "Accepted", "Delivered", "Cancelled"];
-
-    if (!allowedRoles.includes(req.admin?.role)) {
-      return res.status(403).json({
-        success: false,
-        message: "تعذر تعديل حالة الطلب!",
-      });
-    }
 
     const { orderId, status } = req.body;
 
@@ -342,6 +247,11 @@ exports.updateOrderStatus = async (req, res) => {
         success: false,
         message: " يرجى التأكد من إدخال البيانات بشكل صحيح",
       });
+    }
+    if (!mongoose.Types.ObjectId.isValid(orderId)) {
+      return res
+        .status(400)
+        .json({ success: false, message: "معرّف الطلب غير صالح" });
     }
 
     if (!allowedStatuses.includes(status)) {
@@ -373,5 +283,88 @@ exports.updateOrderStatus = async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ success: false, message: "حدث خطأ ما!" });
+  }
+};
+
+exports.verifyPhoneAndCreateToken = async (req, res) => {
+  try {
+    const { phoneNumber } = req.body;
+
+    if (
+      !phoneNumber ||
+      typeof phoneNumber !== "string" ||
+      !phoneNumber.trim()
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "يرجى إدخال رقم الهاتف",
+      });
+    }
+
+    const cleanPhone = phoneNumber.trim();
+
+    const orders = await Order.find({ phoneNumber: cleanPhone }).limit(1);
+
+    if (!orders || orders.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "لا توجد طلبات مرتبطة بهذا الرقم",
+      });
+    }
+
+    const token = crypto.randomBytes(32).toString("hex");
+
+    await GuestSession.create({
+      phoneNumber: cleanPhone,
+      token: token,
+    });
+
+    return res.status(200).json({
+      success: true,
+      token: token,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "حدث خطأ ما",
+    });
+  }
+};
+
+exports.getOrdersByToken = async (req, res) => {
+  res.set("Cache-Control", "no-store");
+
+  try {
+    const token = req.headers["x-guest-token"];
+
+    if (!token || typeof token !== "string" || !token.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "الرمز غير موجود",
+      });
+    }
+
+    const session = await GuestSession.findOne({ token: token.trim() });
+
+    if (!session) {
+      return res.status(401).json({
+        success: false,
+        message: "انتهت الجلسة، يرجى إدخال رقم الهاتف مرة أخرى",
+      });
+    }
+
+    const orders = await Order.find({
+      phoneNumber: session.phoneNumber,
+    }).sort({ createdAt: -1 });
+
+    return res.status(200).json({
+      success: true,
+      data: orders,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "حدث خطأ ما",
+    });
   }
 };

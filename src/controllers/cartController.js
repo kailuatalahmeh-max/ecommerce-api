@@ -5,19 +5,13 @@ const { UUID_V4_REGEX } = require("../utils/constants");
 
 exports.addToCart = async (req, res) => {
   try {
-    const { guestId, itemId, quantity } = req.body;
+    const { guestId } = req.params;
+    const { itemId, quantity } = req.body;
 
-    if (!guestId || !itemId || quantity === undefined || quantity === null) {
+    if (!itemId || quantity === undefined || quantity === null) {
       return res.status(400).json({
         success: false,
         message: "يرجى التأكد من إرسال جميع بيانات المنتج المطلوبة",
-      });
-    }
-
-    if (typeof guestId !== "string" || !UUID_V4_REGEX.test(guestId)) {
-      return res.status(400).json({
-        success: false,
-        error: "معرّف الجلسة غير صالح",
       });
     }
     if (!mongoose.Types.ObjectId.isValid(itemId)) {
@@ -100,13 +94,6 @@ exports.getCart = async (req, res) => {
   try {
     const { guestId } = req.params;
 
-    if (!UUID_V4_REGEX.test(guestId)) {
-      return res.status(400).json({
-        success: false,
-        error: "معرّف الجلسة غير صالح",
-      });
-    }
-
     const cart = await Cart.findOne({ guestId }).populate("items.itemId");
 
     if (cart) {
@@ -130,22 +117,7 @@ exports.getCart = async (req, res) => {
 
 exports.deleteCartItem = async (req, res) => {
   try {
-    const { id } = req.params;
-    const { guestId } = req.body;
-
-    if (!UUID_V4_REGEX.test(guestId || "")) {
-      return res.status(400).json({
-        success: false,
-        error: "معرّف الجلسة غير صالح",
-      });
-    }
-
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({
-        success: false,
-        error: "معرّف العنصر غير صالح",
-      });
-    }
+    const { guestId, id } = req.params;
 
     const cartUpdated = await Cart.findOneAndUpdate(
       { guestId: guestId },
@@ -172,22 +144,7 @@ exports.deleteCartItem = async (req, res) => {
 
 exports.increaseQuantity = async (req, res) => {
   try {
-    const { id } = req.params;
-    const { guestId } = req.body;
-
-    if (!UUID_V4_REGEX.test(guestId || "")) {
-      return res.status(400).json({
-        success: false,
-        error: "معرّف الجلسة غير صالح",
-      });
-    }
-
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({
-        success: false,
-        error: "معرّف العنصر غير صالح",
-      });
-    }
+    const { id, guestId } = req.params;
 
     const cart = await Cart.findOne({ guestId }).populate("items.itemId");
 
@@ -247,22 +204,7 @@ exports.increaseQuantity = async (req, res) => {
 
 exports.reduceQuantity = async (req, res) => {
   try {
-    const { id } = req.params;
-    const { guestId } = req.body;
-
-    if (!UUID_V4_REGEX.test(guestId || "")) {
-      return res.status(400).json({
-        success: false,
-        error: "معرّف الجلسة غير صالح",
-      });
-    }
-
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({
-        success: false,
-        error: "معرّف العنصر غير صالح",
-      });
-    }
+    const { id, guestId } = req.params;
 
     const cart = await Cart.findOne({ guestId });
 
@@ -324,12 +266,6 @@ exports.deleteAllCart = async (req, res) => {
   try {
     const { guestId } = req.params;
 
-    if (!UUID_V4_REGEX.test(guestId || "")) {
-      return res.status(400).json({
-        success: false,
-        message: "معرّف الجلسة غير صالح!",
-      });
-    }
     const cartDeleted = await Cart.findOneAndDelete({ guestId: guestId });
 
     if (!cartDeleted) {

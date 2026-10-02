@@ -7,15 +7,6 @@ const Cart = require("../models/Cart");
 
 exports.createAdmin = async (req, res) => {
   try {
-    const superAdmin = req.admin?.role === "super_admin";
-
-    if (!superAdmin) {
-      return res.status(403).json({
-        success: false,
-        message: "لا تمتلك الصلاحيات لأنشاء حساب أدمن",
-      });
-    }
-
     const fullName = String(req.body.fullName || "").trim();
     const email = String(req.body.email || "").trim();
     const password = String(req.body.password || "").trim();
@@ -107,10 +98,11 @@ exports.loginAdmin = async (req, res) => {
     }
 
     const email = rawEmail.toLowerCase();
-    const adminData = await Admin.findOne({ email }).lean();
+    const adminData = await Admin.findOne({ email }).select("+password").lean();
 
     const passwordHash =
-      adminData?.password || "$2b$10$invalidsaltinvalidsaltinvalidsO";
+      adminData?.password ||
+      "$2b$10$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW";
 
     const isMatch = await bcrypt.compare(password, passwordHash);
 
@@ -124,7 +116,7 @@ exports.loginAdmin = async (req, res) => {
     const token = jwt.sign(
       { role: adminData.role, id: adminData._id },
       JWT_SECRET,
-      { expiresIn: "23h" }
+      { expiresIn: "23h" },
     );
 
     return res.json({
@@ -140,19 +132,8 @@ exports.loginAdmin = async (req, res) => {
 
 exports.getAnalytics = async (req, res) => {
   try {
-    const allowedRoles = ["super_admin"];
-
-    if (!allowedRoles.includes(req.admin?.role)) {
-      return res.status(403).json({
-        success: false,
-        message: "تعذر جلب البيانات",
-      });
-    }
-
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
-    const start = Date.now();
 
     const salesStats = await Order.aggregate([
       { $match: { createdAt: { $gte: sevenDaysAgo } } },
@@ -164,8 +145,6 @@ exports.getAnalytics = async (req, res) => {
         },
       },
     ]);
-
-    console.log("salesStats:", Date.now() - start, "ms");
 
     const statusGroup = await Order.aggregate([
       { $match: { createdAt: { $gte: sevenDaysAgo } } },

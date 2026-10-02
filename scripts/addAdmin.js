@@ -2,8 +2,7 @@
 require("dotenv").config();
 const mongoose = require("mongoose");
 const bcrypt = require("bcrypt");
-const Admin = require("./models/Admin");
-
+const Admin = require("../src/models/Admin");
 mongoose.connect(process.env.MONGO_URI).then(async () => {
   const email = "admin@talahmeh.com";
 

@@ -3,11 +3,13 @@ const router = express.Router();
 const adminController = require("../controllers/adminController");
 const { verifyToken } = require("../middlewares/authMiddleware");
 const { createLimiter } = require("../middlewares/rateLimiter");
+const { requireRole } = require("../middlewares/requireRole");
 
 router.post(
   "/create-new-admin",
   createLimiter(5),
   verifyToken,
+  requireRole("super_admin"),
   adminController.createAdmin,
 );
 
@@ -17,6 +19,7 @@ router.get(
   "/analytics",
   createLimiter(50),
   verifyToken,
+  requireRole("super_admin"),
   adminController.getAnalytics,
 );
 
