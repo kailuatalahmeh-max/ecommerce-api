@@ -1,10 +1,13 @@
 require("dotenv").config({ path: "../.env" });
 const mongoose = require("mongoose");
 const Admin = require("../src/models/Admin");
+const dns = require("dns");
+dns.setServers(["8.8.8.8", "1.1.1.1"]);
+
 
 async function updateAdminsLastActivity() {
   try {
-    await mongoose.connect(process.env.MONGO_URI);
+    await mongoose.connect(process.env.MONGO_URI2);
 
     const result_1 = await Admin.collection.updateMany(
       { lastActivityAt: { $exists: false } },
