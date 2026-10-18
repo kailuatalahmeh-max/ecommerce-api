@@ -4,6 +4,7 @@ const adminController = require("../controllers/adminController");
 const { verifyToken } = require("../middlewares/authMiddleware");
 const { createLimiter } = require("../middlewares/rateLimiter");
 const { requireRole } = require("../middlewares/requireRole");
+const { validateObjectId } = require("../middlewares/validateObjectId");
 
 router.post(
   "/create-new-admin",
@@ -21,6 +22,32 @@ router.get(
   verifyToken,
   requireRole("super_admin"),
   adminController.getAnalytics,
+);
+
+router.get(
+  "/get-admins",
+  createLimiter(200),
+  verifyToken,
+  requireRole("super_admin"),
+  adminController.getAdminsData,
+);
+
+router.put(
+  "/disable-admin/:adminId",
+  createLimiter(10),
+  verifyToken,
+  requireRole("super_admin"),
+  validateObjectId("adminId"),
+  adminController.disableAdmin,
+);
+
+router.put(
+  "/enable-admin/:adminId",
+  createLimiter(10),
+  verifyToken,
+  requireRole("super_admin"),
+  validateObjectId("adminId"),
+  adminController.enableAdmin,
 );
 
 module.exports = router;

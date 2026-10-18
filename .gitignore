@@ -1,3 +1,5 @@
 /node_modules/
 .env
+.env.testing
+.env.*
 .DS_Store

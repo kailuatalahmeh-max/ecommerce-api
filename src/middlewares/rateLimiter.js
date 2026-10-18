@@ -1,22 +1,26 @@
 const rateLimit = require("express-rate-limit");
 
+const WINDOW_MS = 15 * 60 * 1000;
+const WINDOW_MINUTES = WINDOW_MS / 60000;
+
 const addLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
+  windowMs: WINDOW_MS,
   max: 1000,
   message: {
     status: 429,
-    message: "هدّي اللعب شوي! أرسلت طلبات كثيرة، ارجع جرب بعد 15 دقيقة.",
+    message: `عدد الطلبات كبير، يرجى المحاولة بعد ${WINDOW_MINUTES} دقيقة.`,
   },
 });
 
 const createLimiter = (maxRequests, message) => {
   return rateLimit({
-    windowMs: 15 * 60 * 1000,
+    windowMs: WINDOW_MS,
     max: maxRequests || 15,
     message: {
       status: 429,
       message:
-        message || "هدّي اللعب شوي! أرسلت طلبات كثيرة، ارجع جرب بعد 15 دقيقة.",
+        message ||
+        `عدد الطلبات كبير، يرجى المحاولة بعد ${WINDOW_MINUTES} دقيقة.`,
     },
   });
 };

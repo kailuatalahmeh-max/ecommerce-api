@@ -3,7 +3,7 @@ const Cart = require("../models/Cart");
 const Item = require("../models/Item");
 const { UUID_V4_REGEX } = require("../utils/constants");
 
-exports.addToCart = async (req, res) => {
+exports.addToCart = async (req, res, next) => {
   try {
     const { guestId } = req.params;
     const { itemId, quantity } = req.body;
@@ -82,15 +82,11 @@ exports.addToCart = async (req, res) => {
       data: { items: cart.items },
     });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({
-      success: false,
-      message: "حدث خطأ غير متوقع في السيرفر أثناء إضافة المنتج",
-    });
+    next(error);
   }
 };
 
-exports.getCart = async (req, res) => {
+exports.getCart = async (req, res, next) => {
   try {
     const { guestId } = req.params;
 
@@ -108,14 +104,11 @@ exports.getCart = async (req, res) => {
       });
     }
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "حدث خطأ في السيرفر أثناء جلب السلة",
-    });
+    next(error);
   }
 };
 
-exports.deleteCartItem = async (req, res) => {
+exports.deleteCartItem = async (req, res, next) => {
   try {
     const { guestId, id } = req.params;
 
@@ -138,11 +131,11 @@ exports.deleteCartItem = async (req, res) => {
       data: cartUpdated,
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: "حدث خطأ ما!" });
+    next(error);
   }
 };
 
-exports.increaseQuantity = async (req, res) => {
+exports.increaseQuantity = async (req, res, next) => {
   try {
     const { id, guestId } = req.params;
 
@@ -195,14 +188,11 @@ exports.increaseQuantity = async (req, res) => {
       data: updatedCart,
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "حدث خطأ ما!",
-    });
+    next(error);
   }
 };
 
-exports.reduceQuantity = async (req, res) => {
+exports.reduceQuantity = async (req, res, next) => {
   try {
     const { id, guestId } = req.params;
 
@@ -255,14 +245,11 @@ exports.reduceQuantity = async (req, res) => {
       data: updatedCart,
     });
   } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: "حدث خطأ ما أثناء تقليل الكمية!",
-    });
+    next(error);
   }
 };
 
-exports.deleteAllCart = async (req, res) => {
+exports.deleteAllCart = async (req, res, next) => {
   try {
     const { guestId } = req.params;
 
@@ -277,9 +264,6 @@ exports.deleteAllCart = async (req, res) => {
 
     return res.status(200).json({ success: true, message: "تم الحذف بنجاح" });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "حدث خطأ ما!",
-    });
+    next(error);
   }
 };

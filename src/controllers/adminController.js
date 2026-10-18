@@ -5,7 +5,7 @@ const Order = require("../models/Order");
 const Item = require("../models/Item");
 const Cart = require("../models/Cart");
 
-exports.createAdmin = async (req, res) => {
+exports.createAdmin = async (req, res, next) => {
   try {
     const fullName = String(req.body.fullName || "").trim();
     const email = String(req.body.email || "").trim();
@@ -51,7 +51,7 @@ exports.createAdmin = async (req, res) => {
       email: normalizedEmail,
     }).lean();
     if (existingAdmin) {
-      return res.status(400).json({
+      return res.status(409).json({
         success: false,
         message: "البريد الإلكتروني مستخدم بالفعل مسجلاً مسبقاً",
       });
@@ -70,14 +70,14 @@ exports.createAdmin = async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: `تم أضافة الأدمن بنجاح`,
+      message: `تم إضافة الأدمن بنجاح`,
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: "حدث خطأ داخلي" });
+    next(error);
   }
 };
 
-exports.loginAdmin = async (req, res) => {
+exports.loginAdmin = async (req, res, next) => {
   const JWT_SECRET = process.env.JWT_SECRET;
   if (!JWT_SECRET) {
     console.error("CRITICAL: JWT_SECRET is not defined!");
@@ -113,6 +113,13 @@ exports.loginAdmin = async (req, res) => {
       });
     }
 
+    if (!adminData.isActive) {
+      return res.status(403).json({
+        success: false,
+        message: "حسابك معطّل، يرجى التواصل مع المدير العام",
+      });
+    }
+
     const token = jwt.sign(
       { role: adminData.role, id: adminData._id },
       JWT_SECRET,
@@ -125,12 +132,11 @@ exports.loginAdmin = async (req, res) => {
       message: "تم التحقق من البيانات بنجاح!",
     });
   } catch (error) {
-    console.error("حدث خطأ في السيرفر:", error);
-    return res.status(500).json({ success: false, message: "حدث خطأ ما!" });
+    next(error);
   }
 };
 
-exports.getAnalytics = async (req, res) => {
+exports.getAnalytics = async (req, res, next) => {
   try {
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
@@ -214,9 +220,92 @@ exports.getAnalytics = async (req, res) => {
       },
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "حدث خطأ ما!",
+    next(error);
+  }
+};
+
+exports.getAdminsData = async (req, res, next) => {
+  try {
+    const admins = await Admin.find({}, "-password").lean();
+    if (!admins || admins.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "لا يوجد بيانات للأدمنز",
+      });
+    }
+    res.json({ success: true, data: admins });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.disableAdmin = async (req, res, next) => {
+  try {
+    const adminId = req.params.adminId;
+    const admin = await Admin.findById(adminId);
+
+    if (!admin) {
+      return res.status(404).json({
+        success: false,
+        message: "الادمن غير موجود",
+      });
+    }
+
+    if (admin._id.equals(req.admin._id)) {
+      return res.status(400).json({
+        success: false,
+        message: "لا يمكنك تعطيل حسابك بنفسك",
+      });
+    }
+
+    if (admin.role === "super_admin" && admin.isActive) {
+      const activeSuperAdmins = await Admin.countDocuments({
+        role: "super_admin",
+        isActive: true,
+      });
+
+      if (activeSuperAdmins <= 1) {
+        return res.status(400).json({
+          success: false,
+          message: "لا يمكن تعطيل آخر حساب مدير عام نشط",
+        });
+      }
+    }
+
+    admin.isActive = false;
+    await admin.save();
+
+    res.json({
+      success: true,
+      message: "تم تعطيل حساب الأدمن بنجاح",
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.enableAdmin = async (req, res, next) => {
+  try {
+    const adminId = req.params.adminId;
+
+    const admin = await Admin.findById(adminId);
+
+    if (!admin) {
+      return res.status(404).json({
+        success: false,
+        message: "الادمن غير موجود",
+      });
+    }
+
+
+    admin.isActive = true;
+    await admin.save();
+
+    res.json({
+      success: true,
+      message: "تم تفعيل حساب الأدمن بنجاح",
+    });
+  } catch (error) {
+    next(error);
   }
 };

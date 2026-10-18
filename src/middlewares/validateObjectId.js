@@ -5,7 +5,7 @@ function validateObjectId(paramName = "id") {
     if (!mongoose.Types.ObjectId.isValid(req.params[paramName])) {
       return res.status(400).json({
         success: false,
-        error: "معرّف العنصر غير صالح",
+        message: "معرّف العنصر غير صالح",
       });
     }
     next();

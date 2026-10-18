@@ -1,10 +1,11 @@
+require("dotenv").config();
 const app = require("./myApp");
-const errorHandler = require("./src/middlewares/errorMiddleware");
+const connectDB = require("./src/config/db");
 
 const PORT = process.env.PORT || 5000;
 
-app.use(errorHandler);
-
-app.listen(PORT, () => {
-  console.log(`Node is listening on port ${PORT}...`);
+connectDB().then(() => {
+  app.listen(PORT, () => {
+    console.log(`Node is listening on port ${PORT}...`);
+  });
 });

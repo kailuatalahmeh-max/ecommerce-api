@@ -5,7 +5,7 @@ const Order = require("../models/Order");
 const Item = require("../models/Item");
 const Cart = require("../models/Cart");
 
-exports.directPurchase = async (req, res) => {
+exports.directPurchase = async (req, res, next) => {
   try {
     const { purchaseDetails } = req;
 
@@ -81,14 +81,11 @@ exports.directPurchase = async (req, res) => {
       },
     });
   } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: "حدث خطأ أثناء معالجة عملية الشراء المباشر!",
-    });
+    next(error);
   }
 };
 
-exports.cartPurchase = async (req, res) => {
+exports.cartPurchase = async (req, res, next) => {
   try {
     const { guestId } = req.params;
     const { purchaseDetails } = req;
@@ -174,14 +171,11 @@ exports.cartPurchase = async (req, res) => {
       message: "تم الشراء! العناصر موجودة في صفحة طلباتي",
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "حدث خطأ ما",
-    });
+    next(error);
   }
 };
 
-exports.getMyOrders = async (req, res) => {
+exports.getMyOrders = async (req, res, next) => {
   res.set("Cache-Control", "no-store");
 
   try {
@@ -216,27 +210,21 @@ exports.getMyOrders = async (req, res) => {
       data: orders,
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "حدث خطأ ما",
-    });
+    next(error);
   }
 };
 
-exports.getAllOrdersForAdmin = async (req, res) => {
+exports.getAllOrdersForAdmin = async (req, res, next) => {
   try {
     const orders = await Order.find().sort({ createdAt: -1 });
 
     return res.status(200).json({ success: true, data: orders || [] });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "حدث خطأ ما",
-    });
+    next(error);
   }
 };
 
-exports.updateOrderStatus = async (req, res) => {
+exports.updateOrderStatus = async (req, res, next) => {
   try {
     const allowedStatuses = ["Pending", "Accepted", "Delivered", "Cancelled"];
 
@@ -282,11 +270,11 @@ exports.updateOrderStatus = async (req, res) => {
       data: updatedOrder,
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: "حدث خطأ ما!" });
+    next(error);
   }
 };
 
-exports.verifyPhoneAndCreateToken = async (req, res) => {
+exports.verifyPhoneAndCreateToken = async (req, res, next) => {
   try {
     const { phoneNumber } = req.body;
 
@@ -324,14 +312,11 @@ exports.verifyPhoneAndCreateToken = async (req, res) => {
       token: token,
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "حدث خطأ ما",
-    });
+    next(error);
   }
 };
 
-exports.getOrdersByToken = async (req, res) => {
+exports.getOrdersByToken = async (req, res, next) => {
   res.set("Cache-Control", "no-store");
 
   try {
@@ -362,9 +347,6 @@ exports.getOrdersByToken = async (req, res) => {
       data: orders,
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "حدث خطأ ما",
-    });
+    next(error);
   }
 };

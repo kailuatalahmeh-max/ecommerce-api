@@ -9,7 +9,6 @@ const imageSubSchema = new mongoose.Schema(
 
 const itemSchema = new mongoose.Schema(
   {
-    imageURL: { type: String, default: "" },
     images: {
       type: [imageSubSchema],
       default: [],
@@ -24,12 +23,5 @@ const itemSchema = new mongoose.Schema(
     toObject: { virtuals: true },
   },
 );
-
-itemSchema.virtual("imageURL_virtual").get(function () {
-  if (this.images && this.images.length > 0) {
-    return this.images[0].imageURL;
-  }
-  return this.imageURL;
-});
 
 module.exports = mongoose.model("Item", itemSchema);
