@@ -1,6 +1,18 @@
-const mongoose = require("mongoose");
+import mongoose, { Document, Schema } from "mongoose";
 
-const adminSchema = new mongoose.Schema(
+export interface IAdmin extends Document {
+  fullName: string;
+  firstName: string;
+  email: string;
+  password?: string; // select: false
+  role: "admin" | "moderator" | "super_admin";
+  isActive: boolean;
+  lastActivityAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const adminSchema = new Schema<IAdmin>(
   {
     fullName: { type: String, required: [true, "الاسم الكامل مطلوب"] },
     firstName: {
@@ -38,10 +50,10 @@ const adminSchema = new mongoose.Schema(
   },
 );
 
-adminSchema.pre("save", function () {
+adminSchema.pre("save", function (this: IAdmin) {
   if (this.fullName) {
     this.firstName = this.fullName.split(" ")[0];
   }
 });
 
-module.exports = mongoose.model("Admin", adminSchema);
+export default mongoose.model<IAdmin>("Admin", adminSchema);

@@ -1,6 +1,6 @@
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const Admin = require("../models/Admin");
+const Admin = require("../models/Admin").default
 const Order = require("../models/Order").default;
 const Item = require("../models/Item").default;
 const Cart = require("../models/Cart").default;

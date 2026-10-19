@@ -3,7 +3,7 @@
 require("dotenv").config();
 const mongoose = require("mongoose");
 
-const Admin = require("../src/models/Admin");
+const Admin = require("../src/models/Admin").default
 const Cart = require("../src/models/Cart").default;
 const Item = require("../src/models/Item").default;
 const Order = require("../src/models/Order").default;

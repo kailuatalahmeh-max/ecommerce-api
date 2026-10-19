@@ -2,7 +2,7 @@ require("dotenv").config({
   path: ".env.testing",
   override: true,
 });
-const Admin = require("../../src/models/Admin");
+const Admin = require("../../src/models/Admin").default
 const request = require("supertest");
 const jwt = require("jsonwebtoken");
 const mongoose = require("mongoose");

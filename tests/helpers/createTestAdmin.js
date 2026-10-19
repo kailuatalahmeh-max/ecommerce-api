@@ -1,5 +1,5 @@
 const jwt = require("jsonwebtoken");
-const Admin = require("../../src/models/Admin");
+const Admin = require("../../src/models/Admin").default
 
 const createTestAdmin = async (role = "admin") => {
   const admin = await Admin.create({
