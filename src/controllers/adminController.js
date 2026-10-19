@@ -2,7 +2,7 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const Admin = require("../models/Admin");
 const Order = require("../models/Order");
-const Item = require("../models/Item");
+const Item = require("../models/Item").default;
 const Cart = require("../models/Cart");
 
 exports.createAdmin = async (req, res, next) => {

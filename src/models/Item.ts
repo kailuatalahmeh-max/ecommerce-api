@@ -1,13 +1,26 @@
-const mongoose = require("mongoose");
+import mongoose, { Schema, Document } from "mongoose";
 
-const imageSubSchema = new mongoose.Schema(
+interface IImage {
+  imageURL: string;
+}
+
+export interface IItem extends Document {
+  images: IImage[];
+  itemName: string;
+  itemPrice: number;
+  itemQuantity: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const imageSubSchema = new Schema<IImage>(
   {
     imageURL: { type: String, required: true },
   },
   { _id: false },
 );
 
-const itemSchema = new mongoose.Schema(
+const itemSchema = new Schema<IItem>(
   {
     images: {
       type: [imageSubSchema],
@@ -24,4 +37,4 @@ const itemSchema = new mongoose.Schema(
   },
 );
 
-module.exports = mongoose.model("Item", itemSchema);
+export default mongoose.model<IItem>("Item", itemSchema);

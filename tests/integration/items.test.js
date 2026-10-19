@@ -7,7 +7,7 @@ const { createTestAdmin } = require("../helpers/createTestAdmin");
 const { disableAdmin } = require("../helpers/disableAdmin");
 
 const Admin = require("../../src/models/Admin");
-const Item = require("../../src/models/Item");
+const Item = require("../../src/models/Item").default;
 
 const {
   validItemData,

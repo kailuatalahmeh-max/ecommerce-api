@@ -3,7 +3,7 @@ const request = require("supertest");
 
 const { connectTestDB, disconnectTestDB } = require("../setup/db");
 
-const Item = require("../../src/models/Item");
+const Item = require("../../src/models/Item").default;
 const Order = require("../../src/models/Order");
 
 const URL = "/api/direct-purchase/set-data";

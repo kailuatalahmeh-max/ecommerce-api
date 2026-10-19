@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 const Cart = require("../models/Cart");
-const Item = require("../models/Item");
+const Item = require("../models/Item").default;
 const { UUID_V4_REGEX } = require("../utils/constants");
 
 exports.addToCart = async (req, res, next) => {

@@ -1,7 +1,7 @@
 require("dotenv").config({ path: "../.env" });
 const mongoose = require("mongoose");
 
-const Item = require("../src/models/Item");
+const Item = require("../src/models/Item").default;
 
 
 async function checkLegacyImageURL() {

@@ -10,7 +10,7 @@ const mongoose = require("mongoose");
 
 const Admin = require("../src/models/Admin");
 const Cart = require("../src/models/Cart");
-const Item = require("../src/models/Item");
+const Item = require("../src/models/Item").default;
 const Order = require("../src/models/Order");
 
 // محارف Unicode الخفية / التحكمية التي نريد إزالتها.

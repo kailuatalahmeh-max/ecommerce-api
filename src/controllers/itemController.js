@@ -1,5 +1,5 @@
 const mongoose = require("mongoose");
-const Item = require("../models/Item");
+const Item = require("../models/Item").default;
 
 exports.getItemsData = async (req, res, next) => {
   try {

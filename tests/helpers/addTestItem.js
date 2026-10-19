@@ -1,4 +1,4 @@
-const Item = require("../../src/models/Item");
+const Item = require("../../src/models/Item").default;
 
 const addTestItem = async () => {
   const testItem = await Item.create({
