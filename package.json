@@ -28,6 +28,8 @@
     "mongoose": "^9.7.0"
   },
   "devDependencies": {
+    "@swc/core": "^1.16.18",
+    "@swc/jest": "^0.2.39",
     "@types/node": "^26.6.5",
     "jest": "^30.5.2",
     "mongodb-memory-server": "^11.3.0",
