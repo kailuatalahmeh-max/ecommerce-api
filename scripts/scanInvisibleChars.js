@@ -6,7 +6,7 @@ const mongoose = require("mongoose");
 const Admin = require("../src/models/Admin");
 const Cart = require("../src/models/Cart").default;
 const Item = require("../src/models/Item").default;
-const Order = require("../src/models/Order");
+const Order = require("../src/models/Order").default;
 
 const INVISIBLE_UNICODE_REGEX = /[\u200B-\u200F\u202A-\u202E\uFEFF]/;
 

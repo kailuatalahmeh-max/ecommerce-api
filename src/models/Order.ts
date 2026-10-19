@@ -1,6 +1,24 @@
-const mongoose = require("mongoose");
+import mongoose, { Document, Schema } from "mongoose";
 
-const OrderSchema = new mongoose.Schema(
+export interface IOrderItem {
+  itemName: string;
+  itemPrice: number;
+  quantity: number;
+  itemId: mongoose.Types.ObjectId;
+}
+
+export interface IOrder extends Document {
+  customerName: string;
+  phoneNumber: string;
+  region: string;
+  items: IOrderItem[];
+  totalPrice: number;
+  status: "Pending" | "Accepted" | "Delivered" | "Cancelled";
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const OrderSchema = new Schema<IOrder>(
   {
     customerName: { type: String, required: true },
     phoneNumber: { type: String, required: true },
@@ -29,4 +47,4 @@ const OrderSchema = new mongoose.Schema(
 
 OrderSchema.index({ phoneNumber: 1, createdAt: -1 });
 
-module.exports = mongoose.model("Order", OrderSchema);
+export default mongoose.model<IOrder>("Order", OrderSchema);

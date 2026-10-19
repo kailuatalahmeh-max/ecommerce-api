@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
 const crypto = require("crypto");
 const GuestSession = require("../models/GuestSession").default;
-const Order = require("../models/Order");
+const Order = require("../models/Order").default;
 const Item = require("../models/Item").default;
 const Cart = require("../models/Cart").default;
 
