@@ -1,5 +1,5 @@
 const mongoose = require("mongoose");
-const Cart = require("../models/Cart");
+const Cart = require("../models/Cart").default;
 const Item = require("../models/Item").default;
 const { UUID_V4_REGEX } = require("../utils/constants");
 

@@ -3,7 +3,7 @@ const jwt = require("jsonwebtoken");
 const Admin = require("../models/Admin");
 const Order = require("../models/Order");
 const Item = require("../models/Item").default;
-const Cart = require("../models/Cart");
+const Cart = require("../models/Cart").default;
 
 exports.createAdmin = async (req, res, next) => {
   try {

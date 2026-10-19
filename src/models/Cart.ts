@@ -1,13 +1,24 @@
-const mongoose = require("mongoose");
+import mongoose, { Document, Schema } from "mongoose";
 
-const CartSchema = new mongoose.Schema(
+export interface ICartItem {
+  itemId: mongoose.Types.ObjectId;
+  quantity: number;
+}
+
+export interface ICart extends Document {
+  guestId: string;
+  items: ICartItem[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const CartSchema = new Schema<ICart>(
   {
     guestId: {
       type: String,
       required: true,
       unique: true,
     },
-
     items: [
       {
         itemId: {
@@ -25,6 +36,7 @@ const CartSchema = new mongoose.Schema(
   },
   { timestamps: true },
 );
+
 CartSchema.index({ updatedAt: 1 }, { expireAfterSeconds: 60 * 60 * 24 * 7 });
 
-module.exports = mongoose.model("Cart", CartSchema);
+export default mongoose.model<ICart>("Cart", CartSchema);

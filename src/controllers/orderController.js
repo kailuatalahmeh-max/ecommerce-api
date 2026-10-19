@@ -3,7 +3,7 @@ const crypto = require("crypto");
 const GuestSession = require("../models/GuestSession").default;
 const Order = require("../models/Order");
 const Item = require("../models/Item").default;
-const Cart = require("../models/Cart");
+const Cart = require("../models/Cart").default;
 
 exports.directPurchase = async (req, res, next) => {
   try {
