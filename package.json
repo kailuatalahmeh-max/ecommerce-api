@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node server.js",
     "test": "jest --runInBand",
-    "dev": "nodemon server.js"
+    "dev": "tsx watch server.js",
+    "typecheck": "tsc --noEmit"
   },
   "keywords": [
     "ecommerce",
