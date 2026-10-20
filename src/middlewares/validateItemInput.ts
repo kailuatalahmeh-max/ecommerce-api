@@ -1,19 +1,24 @@
-const { ITEM_LIMITS } = require("../utils/constants");
+import { Request, Response, NextFunction } from "express";
+import { ITEM_LIMITS } from "../utils/constants";
 
-exports.validateItemInput = (req, res, next) => {
+export const validateItemInput = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): any => {
   try {
     const itemName = String(req.body.itemName || "").trim();
     const itemPrice = Number(req.body.itemPrice);
     const itemQuantity = Number(req.body.itemQuantity);
 
-    let images = [];
+    let images: { imageURL: string }[] = [];
 
     if (Array.isArray(req.body.images) && req.body.images.length > 0) {
       images = req.body.images
-        .map((img) => ({
+        .map((img: any) => ({
           imageURL: String(img.imageURL || "").trim(),
         }))
-        .filter((img) => img.imageURL.length > 0);
+        .filter((img: { imageURL: string }) => img.imageURL.length > 0);
     }
 
     const isPriceInvalid =
@@ -87,7 +92,7 @@ exports.validateItemInput = (req, res, next) => {
       });
     }
 
-    req.validatedData = {
+    (req as any).validatedData = {
       itemName,
       itemPrice,
       itemQuantity,

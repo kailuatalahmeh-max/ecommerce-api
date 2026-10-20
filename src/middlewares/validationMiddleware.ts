@@ -1,14 +1,19 @@
-const { COUNTRY_CODES, REGIONS } = require("../utils/constants");
+import { Request, Response, NextFunction } from "express";
+import { COUNTRY_CODES, REGIONS } from "../utils/constants";
 
 const INVISIBLE_UNICODE_REGEX = /[\u200B-\u200F\u202A-\u202E\uFEFF]/g;
 
-function stripInvisibleChars(value) {
+function stripInvisibleChars(value: any): any {
   return typeof value === "string"
     ? value.replace(INVISIBLE_UNICODE_REGEX, "")
     : value;
 }
 
-exports.validatePurchaseDetails = (req, res, next) => {
+export const validatePurchaseDetails = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): any => {
   const { purchaseDetails } = req.body;
 
   if (!purchaseDetails || typeof purchaseDetails !== "object") {
@@ -58,7 +63,7 @@ exports.validatePurchaseDetails = (req, res, next) => {
   }
 
   const countryFind = COUNTRY_CODES.find(
-    (country) => country.value === countryCode,
+    (country: any) => country.value === countryCode
   );
   if (!countryFind) {
     return res.status(400).json({
@@ -67,7 +72,7 @@ exports.validatePurchaseDetails = (req, res, next) => {
     });
   }
 
-  const regionFind = REGIONS.find((r) => r.value === cleanRegion);
+  const regionFind = REGIONS.find((r: any) => r.value === cleanRegion);
 
   if (!regionFind) {
     return res.status(400).json({
@@ -76,7 +81,7 @@ exports.validatePurchaseDetails = (req, res, next) => {
     });
   }
 
-  req.purchaseDetails = {
+  (req as any).purchaseDetails = {
     ...purchaseDetails,
     fullName: cleanFullName,
     region: cleanRegion,
