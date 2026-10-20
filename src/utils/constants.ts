@@ -38,7 +38,7 @@ const REGIONS = [
   { value: "deir-sammit", label: "دير سامت" },
 ];
 
-module.exports = {
+export = {
   UUID_V4_REGEX,
   COUNTRY_CODES,
   ITEM_LIMITS,

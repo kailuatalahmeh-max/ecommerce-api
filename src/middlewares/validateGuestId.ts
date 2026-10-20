@@ -1,6 +1,11 @@
-const { UUID_V4_REGEX } = require("../utils/constants");
+import { Request, Response, NextFunction } from "express";
+import { UUID_V4_REGEX } from "../utils/constants";
 
-exports.validateGuestId = (req, res, next) => {
+export const validateGuestId = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): any => {
   const { guestId } = req.params;
 
   if (!UUID_V4_REGEX.test(guestId || "")) {
