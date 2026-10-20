@@ -2,7 +2,7 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const { createLimiter } = require("./src/middlewares/rateLimiter");
-const errorHandler = require("./src/middlewares/errorMiddleware");
+const errorHandler = require("./src/middlewares/errorMiddleware").default;
 
 const adminRoutes = require("./src/routes/adminRoutes");
 const itemRoutes = require("./src/routes/itemRoutes");

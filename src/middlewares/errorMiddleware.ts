@@ -1,6 +1,13 @@
-const errorHandler = (err, req, res, next) => {
+import { Request, Response, NextFunction } from "express";
+
+const errorHandler = (
+  err: any,
+  req: Request,
+  res: Response,
+  next: NextFunction
+): any => {
   if (err.name === "ValidationError") {
-    const messages = Object.values(err.errors).map((e) => e.message);
+    const messages = Object.values(err.errors || {}).map((e: any) => e.message);
     return res
       .status(400)
       .json({ success: false, message: messages.join(", ") });
@@ -48,7 +55,7 @@ const errorHandler = (err, req, res, next) => {
   }
 
   console.error(err);
-  res.status(500).json({ success: false, message: "خطأ داخلي في السيرفر" });
+  return res.status(500).json({ success: false, message: "خطأ داخلي في السيرفر" });
 };
 
-module.exports = errorHandler;
+export default errorHandler;
