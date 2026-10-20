@@ -1,7 +1,21 @@
-const jwt = require("jsonwebtoken");
-const Admin = require("../models/Admin").default
+import { Request, Response, NextFunction } from "express";
+import jwt from "jsonwebtoken";
+import Admin, { IAdmin } from "../models/Admin";
 
-async function verifyToken(req, res, next) {
+// توسيع واجهة Request في Express عشان تتعرف على prop الـ admin
+declare global {
+  namespace Express {
+    interface Request {
+      admin?: IAdmin;
+    }
+  }
+}
+
+export async function verifyToken(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<any> {
   try {
     const authHeader = req.headers.authorization;
 
@@ -20,7 +34,7 @@ async function verifyToken(req, res, next) {
         message: "خطأ في تكوين الخادم",
       });
     }
-    const decoded = jwt.verify(token, JWT_SECRET);
+    const decoded = jwt.verify(token, JWT_SECRET) as { id: string };
 
     const admin = await Admin.findById(decoded.id).select(
       "_id fullName email role isActive lastActivityAt",
@@ -37,11 +51,9 @@ async function verifyToken(req, res, next) {
       { _id: admin._id },
       { $set: { lastActivityAt: new Date() } },
     );
-    req.admin = admin;
+    req.admin = admin as IAdmin;
     next();
   } catch (error) {
     next(error);
   }
 }
-
-module.exports = { verifyToken };
