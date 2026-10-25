@@ -1,13 +1,23 @@
 import type { Request, Response, NextFunction } from "express";
 
-import mongoosefrom from "mongoose";
+import mongoose from "mongoose";
 import crypto from "crypto";
-import GuestSessionfrom from "../models/GuestSession";
-import Order from "../models/Order";
-import Item from "../models/Item";
+import GuestSession from "../models/GuestSession";
+import Order, { IOrderItem } from "../models/Order";
+import Item, { IItem } from "../models/Item";
 import Cart from "../models/Cart";
 
-exports.directPurchase = async (req, res, next) => {
+// Cart item after populate("items.itemId"): itemId is the full item, not only the id
+type PopulatedCartItem = {
+  itemId: IItem;
+  quantity: number;
+};
+
+export const directPurchase = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     const { purchaseDetails } = req;
 
@@ -87,14 +97,20 @@ exports.directPurchase = async (req, res, next) => {
   }
 };
 
-exports.cartPurchase = async (req, res, next) => {
+export const cartPurchase = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     const { guestId } = req.params;
     const { purchaseDetails } = req;
 
     const { fullName, countryCode, phoneNumber, region } = purchaseDetails;
 
-    const cart = await Cart.findOne({ guestId }).populate("items.itemId");
+    const cart = await Cart.findOne({ guestId }).populate<{
+      items: PopulatedCartItem[];
+    }>("items.itemId");
 
     if (!cart || !cart.items || cart.items.length === 0) {
       return res.status(404).json({
@@ -117,7 +133,8 @@ exports.cartPurchase = async (req, res, next) => {
       customerName: fullName,
       phoneNumber: `${countryCode}${phoneNumber}`,
       region: region,
-      items: [],
+      items: [] as IOrderItem[],
+      totalPrice: 0,
     };
 
     for (const item of cart.items) {
@@ -177,7 +194,11 @@ exports.cartPurchase = async (req, res, next) => {
   }
 };
 
-exports.getMyOrders = async (req, res, next) => {
+export const getMyOrders = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   res.set("Cache-Control", "no-store");
 
   try {
@@ -216,7 +237,11 @@ exports.getMyOrders = async (req, res, next) => {
   }
 };
 
-exports.getAllOrdersForAdmin = async (req, res, next) => {
+export const getAllOrdersForAdmin = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     const orders = await Order.find().sort({ createdAt: -1 });
 
@@ -226,7 +251,11 @@ exports.getAllOrdersForAdmin = async (req, res, next) => {
   }
 };
 
-exports.updateOrderStatus = async (req, res, next) => {
+export const updateOrderStatus = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     const allowedStatuses = ["Pending", "Accepted", "Delivered", "Cancelled"];
 
@@ -276,7 +305,11 @@ exports.updateOrderStatus = async (req, res, next) => {
   }
 };
 
-exports.verifyPhoneAndCreateToken = async (req, res, next) => {
+export const verifyPhoneAndCreateToken = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     const { phoneNumber } = req.body;
 
@@ -318,7 +351,11 @@ exports.verifyPhoneAndCreateToken = async (req, res, next) => {
   }
 };
 
-exports.getOrdersByToken = async (req, res, next) => {
+export const getOrdersByToken = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   res.set("Cache-Control", "no-store");
 
   try {
