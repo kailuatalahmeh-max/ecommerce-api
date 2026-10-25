@@ -1,9 +1,9 @@
-const express = require("express");
+import express from "express";
+import * as cartController from "../controllers/cartController";
+import { createLimiter } from "../middlewares/rateLimiter";
+import { validateGuestId } from "../middlewares/validateGuestId";
+import { validateObjectId } from "../middlewares/validateObjectId";
 const router = express.Router();
-const cartController = require("../controllers/cartController");
-const { createLimiter } = require("../middlewares/rateLimiter");
-const { validateGuestId } = require("../middlewares/validateGuestId");
-const { validateObjectId } = require("../middlewares/validateObjectId");
 
 router.post(
   "/add/:guestId",
@@ -45,4 +45,4 @@ router.delete(
   cartController.deleteAllCart,
 );
 
-module.exports = router;
+export default router;
