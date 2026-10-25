@@ -5,9 +5,9 @@ const { createLimiter } = require("./src/middlewares/rateLimiter");
 const errorHandler = require("./src/middlewares/errorMiddleware").default;
 
 const adminRoutes = require("./src/routes/adminRoutes");
-const itemRoutes = require("./src/routes/itemRoutes").default
-const cartRoutes = require("./src/routes/cartRoutes").default
-const orderRoutes = require("./src/routes/orderRoutes");
+const itemRoutes = require("./src/routes/itemRoutes").default;
+const cartRoutes = require("./src/routes/cartRoutes").default;
+const orderRoutes = require("./src/routes/orderRoutes").default;
 
 const app = express();
 

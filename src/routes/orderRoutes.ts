@@ -1,13 +1,11 @@
-const express = require("express");
+import express from "express";
+import * as orderController from "../controllers/orderController";
+import { validatePurchaseDetails } from "../middlewares/validationMiddleware";
+import { validateGuestId } from "../middlewares/validateGuestId";
+import { verifyToken } from "../middlewares/authMiddleware";
+import { addLimiter, createLimiter } from "../middlewares/rateLimiter";
+import { requireRole } from "../middlewares/requireRole";
 const router = express.Router();
-const orderController = require("../controllers/orderController");
-const {
-  validatePurchaseDetails,
-} = require("../middlewares/validationMiddleware");
-const { validateGuestId } = require("../middlewares/validateGuestId");
-const { verifyToken } = require("../middlewares/authMiddleware");
-const { addLimiter, createLimiter } = require("../middlewares/rateLimiter");
-const { requireRole } = require("../middlewares/requireRole");
 
 router.post(
   "/direct-purchase/set-data",
@@ -54,4 +52,4 @@ router.get(
   orderController.getOrdersByToken,
 );
 
-module.exports = router;
+export default router;
