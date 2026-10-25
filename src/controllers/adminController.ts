@@ -1,11 +1,17 @@
-const bcrypt = require("bcrypt");
-const jwt = require("jsonwebtoken");
-const Admin = require("../models/Admin").default
-const Order = require("../models/Order").default;
-const Item = require("../models/Item").default;
-const Cart = require("../models/Cart").default;
+import type { Request, Response, NextFunction } from "express";
 
-exports.createAdmin = async (req, res, next) => {
+import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
+import Admin, { IAdmin } from "../models/Admin";
+import Order from "../models/Order";
+import Item from "../models/Item";
+import Cart from "../models/Cart";
+
+export const createAdmin = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     const fullName = String(req.body.fullName || "").trim();
     const email = String(req.body.email || "").trim();
@@ -63,7 +69,7 @@ exports.createAdmin = async (req, res, next) => {
       fullName,
       email: normalizedEmail,
       password: hashedPassword,
-      role,
+      role: role as IAdmin["role"],
     };
 
     await Admin.create(allData);
@@ -77,7 +83,11 @@ exports.createAdmin = async (req, res, next) => {
   }
 };
 
-exports.loginAdmin = async (req, res, next) => {
+export const loginAdmin = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   const JWT_SECRET = process.env.JWT_SECRET;
   if (!JWT_SECRET) {
     console.error("CRITICAL: JWT_SECRET is not defined!");
@@ -136,7 +146,11 @@ exports.loginAdmin = async (req, res, next) => {
   }
 };
 
-exports.getAnalytics = async (req, res, next) => {
+export const getAnalytics = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
@@ -224,7 +238,11 @@ exports.getAnalytics = async (req, res, next) => {
   }
 };
 
-exports.getAdminsData = async (req, res, next) => {
+export const getAdminsData = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     const admins = await Admin.find({}, "-password").lean();
     if (!admins || admins.length === 0) {
@@ -239,7 +257,11 @@ exports.getAdminsData = async (req, res, next) => {
   }
 };
 
-exports.disableAdmin = async (req, res, next) => {
+export const disableAdmin = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     const adminId = req.params.adminId;
     const admin = await Admin.findById(adminId);
@@ -284,7 +306,11 @@ exports.disableAdmin = async (req, res, next) => {
   }
 };
 
-exports.enableAdmin = async (req, res, next) => {
+export const enableAdmin = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     const adminId = req.params.adminId;
 
@@ -296,7 +322,6 @@ exports.enableAdmin = async (req, res, next) => {
         message: "الادمن غير موجود",
       });
     }
-
 
     admin.isActive = true;
     await admin.save();
