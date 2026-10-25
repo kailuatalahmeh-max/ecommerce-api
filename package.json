@@ -16,7 +16,7 @@
     "mongodb",
     "mern"
   ],
-  "author": "اسمك",
+  "author": "Jaber",
   "license": "MIT",
   "dependencies": {
     "bcrypt": "^6.0.0",

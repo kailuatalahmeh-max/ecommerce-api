@@ -1,7 +1,13 @@
-const mongoose = require("mongoose");
-const Item = require("../models/Item").default;
+import { Request, Response, NextFunction } from "express";
+import Item from "../models/Item";
 
-exports.getItemsData = async (req, res, next) => {
+
+
+export const getItemsData = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     const itemsData = await Item.find().lean();
 
@@ -14,7 +20,11 @@ exports.getItemsData = async (req, res, next) => {
   }
 };
 
-exports.addItem = async (req, res, next) => {
+export const addItem = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     const { itemName, itemPrice, itemQuantity, images } = req.validatedData;
     const newItem = await Item.create({
@@ -34,7 +44,11 @@ exports.addItem = async (req, res, next) => {
   }
 };
 
-exports.deleteItem = async (req, res, next) => {
+export const deleteItem = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     const itemId = req.params.id;
 
@@ -52,7 +66,11 @@ exports.deleteItem = async (req, res, next) => {
   }
 };
 
-exports.editItem = async (req, res, next) => {
+export const editItem = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     const { itemName, itemPrice, itemQuantity, images } = req.validatedData;
 

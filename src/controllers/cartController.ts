@@ -1,9 +1,14 @@
-const mongoose = require("mongoose");
-const Cart = require("../models/Cart").default;
-const Item = require("../models/Item").default;
-const { UUID_V4_REGEX } = require("../utils/constants");
+import type { Request, Response, NextFunction } from "express";
 
-exports.addToCart = async (req, res, next) => {
+import mongoose from "mongoose";
+import Cart from "../models/Cart";
+import Item from "../models/Item";
+
+export const addToCart = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     const { guestId } = req.params;
     const { itemId, quantity } = req.body;
@@ -86,7 +91,11 @@ exports.addToCart = async (req, res, next) => {
   }
 };
 
-exports.getCart = async (req, res, next) => {
+export const getCart = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     const { guestId } = req.params;
 
@@ -108,7 +117,11 @@ exports.getCart = async (req, res, next) => {
   }
 };
 
-exports.deleteCartItem = async (req, res, next) => {
+export const deleteCartItem = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     const { guestId, id } = req.params;
 
@@ -135,7 +148,11 @@ exports.deleteCartItem = async (req, res, next) => {
   }
 };
 
-exports.increaseQuantity = async (req, res, next) => {
+export const increaseQuantity = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     const { id, guestId } = req.params;
 
@@ -163,8 +180,7 @@ exports.increaseQuantity = async (req, res, next) => {
       });
     }
 
-    const maxAvailable = itemInCart.itemId.itemQuantity;
-
+    const maxAvailable = (itemInCart.itemId as any).itemQuantity;
     const updatedCart = await Cart.findOneAndUpdate(
       {
         guestId,
@@ -192,7 +208,11 @@ exports.increaseQuantity = async (req, res, next) => {
   }
 };
 
-exports.reduceQuantity = async (req, res, next) => {
+export const reduceQuantity = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     const { id, guestId } = req.params;
 
@@ -249,7 +269,11 @@ exports.reduceQuantity = async (req, res, next) => {
   }
 };
 
-exports.deleteAllCart = async (req, res, next) => {
+export const deleteAllCart = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     const { guestId } = req.params;
 
