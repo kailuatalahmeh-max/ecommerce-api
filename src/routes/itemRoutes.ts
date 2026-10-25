@@ -1,11 +1,11 @@
-const express = require("express");
+import express from "express";
+import * as itemController from "../controllers/itemController";
+import { verifyToken } from "../middlewares/authMiddleware";
+import { addLimiter, createLimiter } from "../middlewares/rateLimiter";
+import { requireRole } from "../middlewares/requireRole";
+import { validateItemInput } from "../middlewares/validateItemInput";
+import { validateObjectId } from "../middlewares/validateObjectId";
 const router = express.Router();
-const itemController = require("../controllers/itemController");
-const { verifyToken } = require("../middlewares/authMiddleware");
-const { addLimiter, createLimiter } = require("../middlewares/rateLimiter");
-const { requireRole } = require("../middlewares/requireRole");
-const { validateItemInput } = require("../middlewares/validateItemInput");
-const { validateObjectId } = require("../middlewares/validateObjectId");
 
 router.post(
   "/addItem",
@@ -34,4 +34,5 @@ router.put(
 );
 
 router.get("/getItemsData", createLimiter(300), itemController.getItemsData);
-module.exports = router;
+
+export default router;
