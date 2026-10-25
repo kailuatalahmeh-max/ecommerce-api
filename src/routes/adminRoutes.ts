@@ -1,10 +1,10 @@
-const express = require("express");
+import express from "express";
+import * as adminController from "../controllers/adminController";
+import { verifyToken } from "../middlewares/authMiddleware";
+import { createLimiter } from "../middlewares/rateLimiter";
+import { requireRole } from "../middlewares/requireRole";
+import { validateObjectId } from "../middlewares/validateObjectId";
 const router = express.Router();
-const adminController = require("../controllers/adminController");
-const { verifyToken } = require("../middlewares/authMiddleware");
-const { createLimiter } = require("../middlewares/rateLimiter");
-const { requireRole } = require("../middlewares/requireRole");
-const { validateObjectId } = require("../middlewares/validateObjectId");
 
 router.post(
   "/create-new-admin",
@@ -50,4 +50,4 @@ router.put(
   adminController.enableAdmin,
 );
 
-module.exports = router;
+export default router;
