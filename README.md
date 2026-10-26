@@ -575,7 +575,7 @@ DRY_RUN=false npx tsx scripts/cleanInvisibleChars.ts
 require("dns").setServers(["8.8.8.8", "1.1.1.1"]);
 ```
 
-> هذا السطر مضاف حالياً في `tests/setup/db.js` فقط (للاختبارات)، وغير مضاف في كود السيرفر نفسه.
+> هذا السطر مضاف حالياً في `tests/setup/db.ts` فقط (للاختبارات)، وغير مضاف في كود السيرفر نفسه.
 
 ---
 
