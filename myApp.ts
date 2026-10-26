@@ -1,13 +1,13 @@
-require("dotenv").config();
-const express = require("express");
-const cors = require("cors");
-const { createLimiter } = require("./src/middlewares/rateLimiter");
-const errorHandler = require("./src/middlewares/errorMiddleware").default;
+import "dotenv/config";
+import express from "express";
+import cors from "cors";
+import { createLimiter } from "./src/middlewares/rateLimiter";
+import errorHandler from "./src/middlewares/errorMiddleware";
 
-const adminRoutes = require("./src/routes/adminRoutes").default;
-const itemRoutes = require("./src/routes/itemRoutes").default;
-const cartRoutes = require("./src/routes/cartRoutes").default;
-const orderRoutes = require("./src/routes/orderRoutes").default;
+import adminRoutes from "./src/routes/adminRoutes";
+import itemRoutes from "./src/routes/itemRoutes";
+import cartRoutes from "./src/routes/cartRoutes";
+import orderRoutes from "./src/routes/orderRoutes";
 
 const app = express();
 
@@ -63,4 +63,4 @@ app.get("/health", createLimiter(1000), (req, res) => {
 
 app.use(errorHandler);
 
-module.exports = app;
+export default app;

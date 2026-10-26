@@ -1,4 +1,4 @@
-const app = require("../../myApp");
+const app = require("../../myApp").default
 const request = require("supertest");
 
 const { connectTestDB, disconnectTestDB } = require("../setup/db");

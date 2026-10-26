@@ -1,4 +1,4 @@
-const app = require("../../myApp");
+const app = require("../../myApp").default
 const jwt = require("jsonwebtoken");
 const request = require("supertest");
 
