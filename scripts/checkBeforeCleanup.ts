@@ -1,7 +1,8 @@
-require("dotenv").config({ path: "../.env" });
+import dotenv from "dotenv";
+import mongoose from "mongoose";
+import Item from "../src/models/Item";
 
-const mongoose = require("mongoose");
-const Item = require("../src/models/Item").default;
+dotenv.config({ path: "../.env" });
 
 async function checkBeforeCleanup() {
   try {

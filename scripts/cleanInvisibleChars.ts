@@ -1,24 +1,36 @@
-// cleanInvisibleChars.js
+// cleanInvisibleChars.ts
 // سكربت تنظيف محارف Unicode الخفية.
 // الوضع الافتراضي: DRY RUN — يعرض التغييرات بدون تعديل قاعدة البيانات.
 //
 // للتنفيذ الفعلي:
-// DRY_RUN=false node scripts/cleanInvisibleChars.js
+// DRY_RUN=false npx tsx scripts/cleanInvisibleChars.ts
 
-require("dotenv").config();
-const mongoose = require("mongoose");
+import "dotenv/config";
+import mongoose from "mongoose";
 
-const Admin = require("../src/models/Admin").default
-const Cart = require("../src/models/Cart").default;
-const Item = require("../src/models/Item").default;
-const Order = require("../src/models/Order").default;
+import Admin from "../src/models/Admin";
+import Cart from "../src/models/Cart";
+import Item from "../src/models/Item";
+import Order from "../src/models/Order";
 
 // محارف Unicode الخفية / التحكمية التي نريد إزالتها.
 const INVISIBLE_UNICODE_REGEX = /[\u200B-\u200F\u202A-\u202E\uFEFF]/g;
 
 const DRY_RUN = process.env.DRY_RUN !== "false";
 
-function stripInvisibleChars(value) {
+type FieldChange = {
+  field: string;
+  before: string;
+  after: string;
+};
+
+type CollectionResult = {
+  affectedDocuments: number;
+  affectedFields: number;
+  modifiedDocuments: number;
+};
+
+function stripInvisibleChars(value: any) {
   if (typeof value !== "string") {
     return value;
   }
@@ -26,7 +38,7 @@ function stripInvisibleChars(value) {
   return value.replace(INVISIBLE_UNICODE_REGEX, "");
 }
 
-function isPlainObject(value) {
+function isPlainObject(value: any): boolean {
   if (value === null || typeof value !== "object") {
     return false;
   }
@@ -36,7 +48,7 @@ function isPlainObject(value) {
   return prototype === Object.prototype || prototype === null;
 }
 
-function cleanValue(value) {
+function cleanValue(value: any): any {
   if (typeof value === "string") {
     return stripInvisibleChars(value);
   }
@@ -46,7 +58,7 @@ function cleanValue(value) {
   }
 
   if (isPlainObject(value)) {
-    const cleaned = {};
+    const cleaned: Record<string, any> = {};
 
     for (const [key, nestedValue] of Object.entries(value)) {
       if (key === "_id" || key === "__v") {
@@ -65,12 +77,12 @@ function cleanValue(value) {
   return value;
 }
 
-function valuesAreDifferent(original, cleaned) {
+function valuesAreDifferent(original: any, cleaned: any): boolean {
   return JSON.stringify(original) !== JSON.stringify(cleaned);
 }
 
-function findChanges(original, cleaned, prefix = "") {
-  const changes = [];
+function findChanges(original: any, cleaned: any, prefix = ""): FieldChange[] {
+  const changes: FieldChange[] = [];
 
   if (typeof original === "string" && typeof cleaned === "string") {
     if (original !== cleaned) {
@@ -107,7 +119,10 @@ function findChanges(original, cleaned, prefix = "") {
   return changes;
 }
 
-async function cleanCollection(name, Model) {
+async function cleanCollection(
+  name: string,
+  Model: mongoose.Model<any>,
+): Promise<CollectionResult> {
   const docs = await Model.find({}).lean();
 
   let affectedDocuments = 0;
@@ -141,7 +156,7 @@ async function cleanCollection(name, Model) {
     }
 
     // نستخدم $set على الحقول التي تغيرت فقط.
-    const update = {};
+    const update: Record<string, string> = {};
 
     changes.forEach(({ field, after }) => {
       // تحويل paths مثل items[0].itemName إلى
@@ -193,7 +208,7 @@ async function main() {
         : "\n⚠️ الوضع الحالي: LIVE — سيتم تعديل البيانات.",
     );
 
-    const results = {};
+    const results: Record<string, CollectionResult> = {};
 
     results.Admin = await cleanCollection("Admin", Admin);
 

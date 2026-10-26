@@ -1,8 +1,9 @@
 // createSuperAdmin.js
-require("dotenv").config();
-const mongoose = require("mongoose");
-const bcrypt = require("bcrypt");
-const Admin = require("../src/models/Admin").default
+import "dotenv/config";
+import mongoose from "mongoose";
+import bcrypt from "bcrypt";
+import Admin from "../src/models/Admin";
+
 mongoose.connect(process.env.MONGO_URI).then(async () => {
   const email = "admin@talahmeh.com";
 

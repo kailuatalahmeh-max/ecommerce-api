@@ -1,7 +1,9 @@
-require("dotenv").config({ path: "../.env" });
-const mongoose = require("mongoose");
-const Admin = require("../src/models/Admin").default
-const dns = require("dns");
+import dotenv from "dotenv";
+import mongoose from "mongoose";
+import dns from "dns";
+import Admin from "../src/models/Admin";
+
+dotenv.config({ path: "../.env" });
 dns.setServers(["8.8.8.8", "1.1.1.1"]);
 
 

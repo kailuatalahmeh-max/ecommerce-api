@@ -1,8 +1,11 @@
-require("dotenv").config({ path: "../.env" });
-const mongoose = require("mongoose");
+import dotenv from "dotenv";
+import mongoose from "mongoose";
+import Item, { IItem } from "../src/models/Item";
 
-const Item = require("../src/models/Item").default;
+dotenv.config({ path: "../.env" });
 
+// The old "imageURL" field is not in IItem anymore, but old documents may still have it
+type LegacyItem = IItem & { imageURL?: string };
 
 async function checkLegacyImageURL() {
   try {
@@ -10,7 +13,7 @@ async function checkLegacyImageURL() {
 
     await mongoose.connect(process.env.MONGO_URI);
 
-    const items = await Item.find({}).lean();
+    const items = await Item.find({}).lean<LegacyItem[]>();
 
     console.log("عدد المنتجات:", items.length);
     console.log("--------------------------------");

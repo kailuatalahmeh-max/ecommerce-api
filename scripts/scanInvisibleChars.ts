@@ -1,22 +1,27 @@
-// scanInvisibleChars.js
+// scanInvisibleChars.ts
 // سكربت فحص فقط — لا يعدّل أي بيانات، فقط يطبع النتائج
-require("dotenv").config();
-const mongoose = require("mongoose");
+import "dotenv/config";
+import mongoose from "mongoose";
 
-const Admin = require("../src/models/Admin").default
-const Cart = require("../src/models/Cart").default;
-const Item = require("../src/models/Item").default;
-const Order = require("../src/models/Order").default;
+import Admin from "../src/models/Admin";
+import Cart from "../src/models/Cart";
+import Item from "../src/models/Item";
+import Order from "../src/models/Order";
 
 const INVISIBLE_UNICODE_REGEX = /[\u200B-\u200F\u202A-\u202E\uFEFF]/;
 
-function hasInvisibleChars(value) {
+type AffectedField = {
+  field: string;
+  value: string;
+};
+
+function hasInvisibleChars(value: any): boolean {
   return typeof value === "string" && INVISIBLE_UNICODE_REGEX.test(value);
 }
 
 // يفحص كل الحقول النصية بمستوى واحد (وداخل عناصر المصفوفات لو موجودة)
-function findAffectedFields(doc, prefix = "") {
-  const affected = [];
+function findAffectedFields(doc: any, prefix = ""): AffectedField[] {
+  const affected: AffectedField[] = [];
 
   for (const key in doc) {
     if (key === "_id" || key === "__v") continue;
@@ -43,7 +48,10 @@ function findAffectedFields(doc, prefix = "") {
   return affected;
 }
 
-async function scanCollection(name, Model) {
+async function scanCollection(
+  name: string,
+  Model: mongoose.Model<any>,
+): Promise<number> {
   const docs = await Model.find({}).lean();
   let totalAffected = 0;
 
@@ -67,7 +75,7 @@ async function scanCollection(name, Model) {
 mongoose.connect(process.env.MONGO_URI).then(async () => {
   console.log("🔍 بدء فحص رموز اليونيكود الخفية (فحص فقط، بدون أي تعديل)...");
 
-  const results = {};
+  const results: Record<string, number> = {};
   results.Admin = await scanCollection("Admin", Admin);
   results.Cart = await scanCollection("Cart", Cart);
   results.Item = await scanCollection("Item", Item);
