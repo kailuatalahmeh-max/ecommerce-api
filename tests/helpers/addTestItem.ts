@@ -1,4 +1,4 @@
-const Item = require("../../src/models/Item").default;
+import Item from "../../src/models/Item";
 
 const addTestItem = async () => {
   const testItem = await Item.create({
@@ -20,6 +20,6 @@ const addTestItem = async () => {
   return { testItem };
 };
 
-module.exports = {
+export default {
   addTestItem,
 };

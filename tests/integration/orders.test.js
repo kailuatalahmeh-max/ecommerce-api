@@ -1,4 +1,4 @@
-const app = require("../../myApp").default
+const app = require("../../myApp").default;
 const request = require("supertest");
 
 const { connectTestDB, disconnectTestDB } = require("../setup/db");
@@ -8,7 +8,7 @@ const Order = require("../../src/models/Order").default;
 
 const URL = "/api/direct-purchase/set-data";
 
-const { addTestItem } = require("../helpers/addTestItem");
+const { addTestItem } = require("../helpers/addTestItem").default;
 const { createTestOrder } = require("../fixtures/orderData");
 
 beforeAll(connectTestDB);

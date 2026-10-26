@@ -1,12 +1,12 @@
-const app = require("../../myApp").default
+const app = require("../../myApp").default;
 const jwt = require("jsonwebtoken");
 const request = require("supertest");
 
 const { connectTestDB, disconnectTestDB } = require("../setup/db");
-const { createTestAdmin } = require("../helpers/createTestAdmin");
+const { createTestAdmin } = require("../helpers/createTestAdmin").default;
 const { disableAdmin } = require("../helpers/disableAdmin");
 
-const Admin = require("../../src/models/Admin").default
+const Admin = require("../../src/models/Admin").default;
 const Item = require("../../src/models/Item").default;
 
 const {

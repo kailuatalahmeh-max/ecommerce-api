@@ -8,7 +8,7 @@ const jwt = require("jsonwebtoken");
 const mongoose = require("mongoose");
 const app = require("../../myApp").default;
 const { connectTestDB, disconnectTestDB } = require("../setup/db");
-const { createTestAdmin } = require("../helpers/createTestAdmin");
+const { createTestAdmin } = require("../helpers/createTestAdmin").default;
 
 jest.setTimeout(60000);
 
