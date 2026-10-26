@@ -3,6 +3,7 @@
     "target": "ES2022",
     "module": "CommonJS",
     "outDir": "dist",
+    "types": ["node", "jest"],
     "allowJs": true,
     "checkJs": false,
     "strict": false,
@@ -10,6 +11,6 @@
     "skipLibCheck": true,
     "noEmit": true
   },
-  "include": ["src", "server.js", "myApp.js"],
-  "exclude": ["node_modules", "dist", "tests"]
+  "include": ["src", "scripts", "server.ts", "myApp.ts", "tests"],
+  "exclude": ["node_modules", "dist"]
 }
