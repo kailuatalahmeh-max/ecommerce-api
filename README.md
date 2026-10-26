@@ -537,27 +537,27 @@ app.set("trust proxy", 1);
 
 | السكربت                       | الوظيفة                                                                                                  | التشغيل                                                  |
 | ----------------------------- | -------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
-| `addAdmin.js`                 | إضافة حساب أدمن يدوياً (راجع الملف لمعرفة طريقة الاستخدام)                                               | —                                                        |
-| `updateAdminsLastActivity.js` | ترحيل: يضيف `lastActivityAt` و`isActive` و`firstName` للأدمنز القدامى الذين لا يملكونها                  | `node updateAdminsLastActivity.js` (من `scripts/`)       |
-| `checkLegacyImageURL.js`      | فحص فقط: يعرض لكل منتج هل ما زال يملك الحقل القديم `imageURL` وعدد الصور في `images`                      | `node checkLegacyImageURL.js` (من `scripts/`)            |
-| `checkBeforeCleanup.js`       | فحص فقط: يتأكد أن كل المنتجات لديها `images` قبل حذف `imageURL` القديم                                    | `node checkBeforeCleanup.js` (من `scripts/`)             |
-| `cleanDatabase.js`            | **يحذف** الحقل القديم `imageURL` من جميع المنتجات                                                         | `node cleanDatabase.js` (من `scripts/`)                  |
-| `scanInvisibleChars.js`       | فحص فقط: يبحث عن محارف Unicode الخفية في `Admin` و`Cart` و`Item` و`Order` ويطبع النتائج                    | `node scripts/scanInvisibleChars.js` (من `backend/`)     |
-| `cleanInvisibleChars.js`      | يزيل محارف Unicode الخفية من نفس الجداول. الوضع الافتراضي **DRY RUN** (عرض فقط بدون تعديل)               | `node scripts/cleanInvisibleChars.js` (من `backend/`)    |
+| `addAdmin.ts`                 | إضافة حساب أدمن يدوياً (راجع الملف لمعرفة طريقة الاستخدام)                                               | —                                                        |
+| `updateAdminsLastActivity.ts` | ترحيل: يضيف `lastActivityAt` و`isActive` و`firstName` للأدمنز القدامى الذين لا يملكونها                  | `npx tsx updateAdminsLastActivity.ts` (من `scripts/`)       |
+| `checkLegacyImageURL.ts`      | فحص فقط: يعرض لكل منتج هل ما زال يملك الحقل القديم `imageURL` وعدد الصور في `images`                      | `npx tsx checkLegacyImageURL.ts` (من `scripts/`)            |
+| `checkBeforeCleanup.ts`       | فحص فقط: يتأكد أن كل المنتجات لديها `images` قبل حذف `imageURL` القديم                                    | `npx tsx checkBeforeCleanup.ts` (من `scripts/`)             |
+| `cleanDatabase.ts`            | **يحذف** الحقل القديم `imageURL` من جميع المنتجات                                                         | `npx tsx cleanDatabase.ts` (من `scripts/`)                  |
+| `scanInvisibleChars.ts`       | فحص فقط: يبحث عن محارف Unicode الخفية في `Admin` و`Cart` و`Item` و`Order` ويطبع النتائج                    | `npx tsx scripts/scanInvisibleChars.ts` (من `backend/`)     |
+| `cleanInvisibleChars.ts`      | يزيل محارف Unicode الخفية من نفس الجداول. الوضع الافتراضي **DRY RUN** (عرض فقط بدون تعديل)               | `npx tsx scripts/cleanInvisibleChars.ts` (من `backend/`)    |
 
-للتنفيذ الفعلي (وليس العرض فقط) لسكربت `cleanInvisibleChars.js`:
+للتنفيذ الفعلي (وليس العرض فقط) لسكربت `cleanInvisibleChars.ts`:
 
 ```bash
-DRY_RUN=false node scripts/cleanInvisibleChars.js
+DRY_RUN=false npx tsx scripts/cleanInvisibleChars.ts
 ```
 
 ### ترحيل الصور من `imageURL` إلى `images`
 
 كان المنتج يخزّن صورة واحدة في الحقل `imageURL`، ثم تم الانتقال إلى مصفوفة `images`. ترتيب التنظيف الآمن:
 
-1. `checkLegacyImageURL.js` لمعرفة حالة المنتجات.
-2. `checkBeforeCleanup.js` للتأكد أن كل منتج لديه `images`.
-3. `cleanDatabase.js` لحذف `imageURL` القديم، وهذا الأمر **لا يملك وضع DRY RUN ولا يمكن التراجع عنه**، فخذ نسخة احتياطية قبله.
+1. `checkLegacyImageURL.ts` لمعرفة حالة المنتجات.
+2. `checkBeforeCleanup.ts` للتأكد أن كل منتج لديه `images`.
+3. `cleanDatabase.ts` لحذف `imageURL` القديم، وهذا الأمر **لا يملك وضع DRY RUN ولا يمكن التراجع عنه**، فخذ نسخة احتياطية قبله.
 
 ---
 
