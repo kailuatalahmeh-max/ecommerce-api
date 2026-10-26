@@ -1,6 +1,6 @@
-require("dotenv").config();
-const app = require("./myApp").default;
-const connectDB = require("./src/config/db").default;
+import "dotenv/config";
+import app from "./myApp";
+import connectDB from "./src/config/db";
 
 const PORT = process.env.PORT || 5000;
 
