@@ -1,14 +1,15 @@
-require("dotenv").config({
+import dotenv from "dotenv";
+import dns from "dns";
+import mongoose from "mongoose";
+
+dotenv.config({
   path: ".env.testing",
   override: true,
 });
 
-const dns = require("dns");
 dns.setServers(["8.8.8.8", "1.1.1.1"]);
 
-const mongoose = require("mongoose");
-
-const connectTestDB = async () => {
+export const connectTestDB = async () => {
   if (!process.env.MONGO_URI) {
     throw new Error("MONGO_URI is missing from .env.testing");
   }
@@ -25,8 +26,6 @@ const connectTestDB = async () => {
   }
 };
 
-const disconnectTestDB = async () => {
+export const disconnectTestDB = async () => {
   await mongoose.disconnect();
 };
-
-module.exports = { connectTestDB, disconnectTestDB };
