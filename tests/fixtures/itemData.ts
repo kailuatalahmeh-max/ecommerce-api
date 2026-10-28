@@ -56,7 +56,7 @@ const validEditedItemData = {
   ],
 };
 
-module.exports = {
+export {
   validItemData,
   emptyImagesData,
   invalidItemDataNegativePrice,

@@ -1,14 +1,13 @@
-require("dotenv").config({
-  path: ".env.testing",
-  override: true,
-});
-const Admin = require("../../src/models/Admin").default;
-const request = require("supertest");
-const jwt = require("jsonwebtoken");
-const mongoose = require("mongoose");
-const app = require("../../myApp").default;
-const { connectTestDB, disconnectTestDB } = require("../setup/db");
-const { createTestAdmin } = require("../helpers/createTestAdmin").default;
+import Admin from "../../src/models/Admin";
+import request from "supertest";
+import jwt from "jsonwebtoken";
+import mongoose from "mongoose";
+import app from "../../myApp";
+import { connectTestDB, disconnectTestDB } from "../setup/db";
+
+const SECRET = process.env.JWT_SECRET;
+
+if (!SECRET) throw new Error("JWT_SECRET is not defined");
 
 jest.setTimeout(60000);
 
@@ -43,7 +42,7 @@ describe("حماية endpoints الأدمن", () => {
   it("token صحيح التوقيع لأدمن غير موجود لازم يرجّع 401", async () => {
     const ghostToken = jwt.sign(
       { role: "admin", id: new mongoose.Types.ObjectId() },
-      process.env.JWT_SECRET,
+      SECRET,
     );
     const res = await request(app)
       .delete("/api/deleteItem/507f1f77bcf86cd799439011")

@@ -1,6 +1,6 @@
-const Admin = require("../../src/models/Admin").default
+import Admin from "../../src/models/Admin";
 
 const disableAdmin = async (adminId) => {
   await Admin.updateOne({ _id: adminId }, { isActive: false });
 };
-module.exports = { disableAdmin };
+export default { disableAdmin };

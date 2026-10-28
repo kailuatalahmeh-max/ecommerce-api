@@ -1,15 +1,18 @@
-const app = require("../../myApp").default;
-const request = require("supertest");
+import app from "../../myApp";
+import request from "supertest";
 
-const { connectTestDB, disconnectTestDB } = require("../setup/db");
+import { connectTestDB, disconnectTestDB } from "../setup/db";
 
-const Item = require("../../src/models/Item").default;
-const Order = require("../../src/models/Order").default;
+import Item from "../../src/models/Item";
+import Order from "../../src/models/Order";
 
 const URL = "/api/direct-purchase/set-data";
 
-const { addTestItem } = require("../helpers/addTestItem").default;
-const { createTestOrder } = require("../fixtures/orderData");
+import helperAddTestItem from "../helpers/addTestItem";
+const { addTestItem } = helperAddTestItem;
+
+import fixturesCreateTestOrder from "../fixtures/orderData";
+const { createTestOrder } = fixturesCreateTestOrder;
 
 beforeAll(connectTestDB);
 afterAll(disconnectTestDB);

@@ -1,20 +1,23 @@
-const app = require("../../myApp").default;
-const jwt = require("jsonwebtoken");
-const request = require("supertest");
+import app from "../../myApp";
+import jwt from "jsonwebtoken";
+import request from "supertest";
 
-const { connectTestDB, disconnectTestDB } = require("../setup/db");
-const { createTestAdmin } = require("../helpers/createTestAdmin").default;
-const { disableAdmin } = require("../helpers/disableAdmin");
+import { connectTestDB, disconnectTestDB } from "../setup/db";
+import helperCreateTestAdmin from "../helpers/createTestAdmin";
+import helperDisableAdmin from "../helpers/disableAdmin";
 
-const Admin = require("../../src/models/Admin").default;
-const Item = require("../../src/models/Item").default;
+const { createTestAdmin } = helperCreateTestAdmin;
+const { disableAdmin } = helperDisableAdmin;
 
-const {
+import Admin from "../../src/models/Admin";
+import Item from "../../src/models/Item";
+
+import {
   validItemData,
   validEditedItemData,
   invalidItemDataNegativePrice,
   invalidItemDataJavaScriptImageURL,
-} = require("../fixtures/itemData");
+} from "../fixtures/itemData";
 
 beforeAll(connectTestDB);
 afterAll(disconnectTestDB);
