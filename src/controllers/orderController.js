@@ -175,45 +175,6 @@ exports.cartPurchase = async (req, res, next) => {
   }
 };
 
-exports.getMyOrders = async (req, res, next) => {
-  res.set("Cache-Control", "no-store");
-
-  try {
-    const { phoneNumber } = req.query;
-
-    if (
-      !phoneNumber ||
-      typeof phoneNumber !== "string" ||
-      !phoneNumber.trim()
-    ) {
-      return res.status(400).json({
-        success: false,
-        message: "يرجى أدخال رقم هاتف صالح للبحث عن الطلبات!",
-      });
-    }
-
-    const cleanPhone = phoneNumber.trim();
-
-    const orders = await Order.find({ phoneNumber: cleanPhone }).sort({
-      createdAt: -1,
-    });
-
-    if (!orders || orders.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "ليس لديك طلبات شراء حتى اللحظة!",
-      });
-    }
-
-    return res.status(200).json({
-      success: true,
-      data: orders,
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
 exports.getAllOrdersForAdmin = async (req, res, next) => {
   try {
     const orders = await Order.find().sort({ createdAt: -1 });

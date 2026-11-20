@@ -334,7 +334,6 @@ The `guestId` is sent in the URL and is validated before the request runs. Produ
 | ------- | --------------------------------------- | ------------ | ------------------------------------------------- |
 | `POST`  | `/api/orders`                           | Public       | Buy one product directly, without the cart        |
 | `POST`  | `/api/carts/:guestId/checkout`          | Public       | Buy everything in the cart                        |
-| `GET`   | `/api/orders/lookup?phoneNumber=`       | Public       | Get a user's orders by phone number               |
 | `POST`  | `/api/guest/sessions`                   | Public       | Create a guest token with a phone number          |
 | `GET`   | `/api/guest/orders`                     | Guest Token  | Get a user's orders with the token                |
 | `GET`   | `/api/orders`                           | `moderator+` | Get all orders (dashboard)                        |
@@ -612,10 +611,7 @@ These are things I know need work, but I postponed them because of time or cost.
 
 ### 📱 Phone ownership check with OTP/SMS
 
-Right now, anyone who knows a phone number with orders can:
-
-- Get a guest token with `/api/guest/sessions`.
-- Get the orders directly with `/api/orders/lookup`.
+Right now, anyone who knows a phone number with orders can get a guest token with `/api/guest/sessions`, and then see that person's orders.
 
 This is because there is no step to check who owns the number.
 

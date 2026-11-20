@@ -26,9 +26,6 @@ router.get(
   orderController.getAllOrdersForAdmin,
 );
 
-// GET /api/orders/lookup?phoneNumber=
-router.get("/lookup", createLimiter(30), orderController.getMyOrders);
-
 router.patch(
   "/:orderId",
   createLimiter(300),
