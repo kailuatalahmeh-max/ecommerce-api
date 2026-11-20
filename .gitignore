@@ -3,3 +3,4 @@
 .env.testing
 .env.*
 .DS_Store
+/backups/
