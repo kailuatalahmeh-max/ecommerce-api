@@ -194,7 +194,7 @@ Authentication uses a **JWT Bearer Token**:
 Authorization: Bearer <token>
 ```
 
-- The token is valid for **23 hours**. It contains the admin `id` and `role`.
+- The token is valid for **48 hours**. It contains the admin `id` and `role`.
 - A disabled account cannot log in (`403`).
 - A disabled account (`isActive: false`) also gets `401` on every admin request, even if its token is still valid.
 - Each successful admin request updates the admin's `lastActivityAt`.

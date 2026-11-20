@@ -123,7 +123,7 @@ exports.loginAdmin = async (req, res, next) => {
     const token = jwt.sign(
       { role: adminData.role, id: adminData._id },
       JWT_SECRET,
-      { expiresIn: "23h" },
+      { expiresIn: "48h" },
     );
 
     return res.json({
