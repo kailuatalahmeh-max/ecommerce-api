@@ -4,6 +4,7 @@ const GuestSession = require("../models/GuestSession");
 const Order = require("../models/Order");
 const Item = require("../models/Item");
 const Cart = require("../models/Cart");
+const { normalizePhone } = require("../utils/phone");
 
 exports.directPurchase = async (req, res, next) => {
   try {
@@ -251,7 +252,15 @@ exports.verifyPhoneAndCreateToken = async (req, res, next) => {
       });
     }
 
-    const cleanPhone = phoneNumber.trim();
+    // نفس شكل الرقم المحفوظ في الطلب، مثال: +970599123456
+    const cleanPhone = normalizePhone(phoneNumber);
+
+    if (!cleanPhone) {
+      return res.status(400).json({
+        success: false,
+        message: "رقم الهاتف غير صحيح، اختر كود الدولة وأدخل 9 أرقام",
+      });
+    }
 
     const orders = await Order.find({ phoneNumber: cleanPhone }).limit(1);
 

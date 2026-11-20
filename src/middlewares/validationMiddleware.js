@@ -1,4 +1,5 @@
 const { COUNTRY_CODES, REGIONS } = require("../utils/constants");
+const { cleanLocalPhone, isValidLocalPhone } = require("../utils/phone");
 
 const INVISIBLE_UNICODE_REGEX = /[\u200B-\u200F\u202A-\u202E\uFEFF]/g;
 
@@ -41,7 +42,8 @@ exports.validatePurchaseDetails = (req, res, next) => {
     });
   }
 
-  const cleanPhone = phoneNumber.replace(/\s+/g, "");
+  // نفس التنظيف المستخدم في صفحة "طلباتي": 0599 123-456 ← 599123456
+  const cleanPhone = cleanLocalPhone(phoneNumber);
 
   if (!/^\d+$/.test(cleanPhone)) {
     return res.status(400).json({
@@ -50,7 +52,7 @@ exports.validatePurchaseDetails = (req, res, next) => {
     });
   }
 
-  if (cleanPhone.length !== 9) {
+  if (!isValidLocalPhone(cleanPhone)) {
     return res.status(400).json({
       success: false,
       message: "رقم الهاتف يجب أن يكون 9 أرقام",

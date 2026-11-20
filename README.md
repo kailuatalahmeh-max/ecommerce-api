@@ -390,7 +390,7 @@ Cart checkout (`POST /api/carts/:guestId/checkout`) sends only `purchaseDetails`
 `purchaseDetails` rules:
 
 - `fullName` and `region` are required. Hidden Unicode characters are removed.
-- `phoneNumber`: exactly **9 digits** (spaces are removed).
+- `phoneNumber`: spaces, `-`, `( )`, `.` and **one leading `0`** are removed, then it must be exactly **9 digits** (`0599 123-456` → `599123456`). Cleaning is in `src/utils/phone.js`.
 - `countryCode`: `+970` or `+972`.
 - `region`: one of the values in `REGIONS` (`src/utils/constants.js`), e.g. `hebron`, `dura`, `yatta`.
 - `quantity` (direct purchase): a whole number bigger than `0`.
@@ -433,7 +433,7 @@ Body:
 }
 ```
 
-> The number must match **exactly** how it is saved in the order: country code + 9 digits (e.g. `+970599123456`).
+> The number is cleaned with the same rules as checkout, then matched against the saved order number (country code + 9 digits). So `+970599123456`, `+9700599123456`, `+970 0599-123-456` and `00970599123456` all find the same orders. A number without a supported country code, or without 9 digits, returns **400**.
 
 If the phone number has at least one order, a token is created and returned:
 

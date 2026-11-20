@@ -2,7 +2,7 @@ const createTestOrder = (itemId, overrides = {}) => ({
   purchaseDetails: {
     fullName: "أحمد محمد",
     countryCode: "+970",
-    phoneNumber: "059123456",
+    phoneNumber: "0599123456",
     region: "hebron",
     ...overrides.purchaseDetails,
   },
