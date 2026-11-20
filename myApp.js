@@ -15,7 +15,11 @@ const guestRoutes = require("./src/routes/guestRoutes");
 const app = express();
 
 app.set("trust proxy", 1);
-app.use(cors());
+app.use(
+  cors({
+    origin: process.env.FRONTEND_URL,
+  }),
+);
 app.use(express.json({ limit: "1mb" }));
 app.use("/api", (req, res, next) => {
   res.set("Cache-Control", "no-store");
@@ -65,6 +69,13 @@ app.use("/api/guest", guestRoutes);
 
 app.get("/health", createLimiter(1000), (req, res) => {
   return res.status(200).json({ status: "ok" });
+});
+
+app.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    message: "Route not found",
+  });
 });
 
 app.use(errorHandler);

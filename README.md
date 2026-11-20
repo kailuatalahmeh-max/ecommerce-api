@@ -94,9 +94,17 @@ Create a `.env` file **inside `backend/`**:
 PORT=5000
 MONGO_URI=your_mongodb_connection_string
 JWT_SECRET=your_jwt_secret_key
+FRONTEND_URL=http://localhost:5173
 ```
 
-`PORT` is optional. The default is `5000`.
+| Variable       | Required | Notes                                                     |
+| -------------- | -------- | --------------------------------------------------------- |
+| `MONGO_URI`    | Yes      | MongoDB connection string                                 |
+| `JWT_SECRET`   | Yes      | Secret key for signing admin tokens                       |
+| `FRONTEND_URL` | Yes      | The only origin allowed by CORS (your frontend address)   |
+| `PORT`         | No       | Default `5000`                                            |
+
+When the server starts (`server.js`), it checks `MONGO_URI`, `JWT_SECRET`, and `FRONTEND_URL`. If one is missing, it prints `Missing environment variables: ...` and stops.
 
 ### 3. Start the server
 
@@ -155,10 +163,16 @@ JWT_SECRET=any_test_secret
 
 ### What do the tests cover?
 
-- **Products:** get products, add and edit by an admin, reject missing or invalid tokens, reject disabled admins, reject invalid data (negative price, `javascript:` links), and handle invalid or missing IDs.
-- **Direct purchase:** successful purchase updates stock and total; rejects invalid ID, invalid quantity, quantity bigger than stock, and missing product.
-- **Stock conflict:** two requests at the same time for stock that is enough for only one: one succeeds (`201`), the other fails (`400`), and only `1` order is saved.
-- Also auth, cart, health, and unit tests for input validation.
+| File                    | What it tests                                                                                                   |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `items.test.js`         | Get products, add and edit by an admin, reject missing or invalid tokens, reject disabled admins, reject invalid data (negative price, `javascript:` links), invalid or missing IDs |
+| `orders.test.js`        | Direct purchase: success updates stock and total; rejects invalid ID, invalid quantity, quantity bigger than stock, missing product. **Stock conflict:** two requests at the same time for stock that is enough for only one → one `201`, one `400`, and only `1` order saved |
+| `auth.test.js`          | Admin routes return `401` with no token, a fake token, or a valid token for an admin that does not exist        |
+| `health.test.js`        | `GET /health` returns `200`                                                                                     |
+| `cart.test.js`          | ⚠️ Empty for now (no tests yet)                                                                                  |
+| `unit/validation.test.js` | ⚠️ Empty for now (no tests yet)                                                                                |
+
+> Jest reports the two empty files as failed suites ("Your test suite must contain at least one test"). All real tests pass.
 
 ---
 
@@ -180,7 +194,11 @@ Authentication uses a **JWT Bearer Token**:
 Authorization: Bearer <token>
 ```
 
-A disabled account (`isActive: false`) gets `401`, even if its token is still valid.
+- The token is valid for **23 hours**. It contains the admin `id` and `role`.
+- A disabled account cannot log in (`403`).
+- A disabled account (`isActive: false`) also gets `401` on every admin request, even if its token is still valid.
+- Each successful admin request updates the admin's `lastActivityAt`.
+- No token, or a wrong role → `401` / `403`.
 
 ---
 
@@ -247,8 +265,8 @@ The cart is deleted automatically **7 days** after its last update (TTL index on
 | Field          | Type     | Notes                                                            |
 | -------------- | -------- | ---------------------------------------------------------------- |
 | `customerName` | `String` | Required                                                         |
-| `phoneNumber`  | `String` | Required                                                         |
-| `region`       | `String` | Required                                                         |
+| `phoneNumber`  | `String` | Required. Saved as country code + number, e.g. `+970599123456`   |
+| `region`       | `String` | Required. A value from the `REGIONS` list in `src/utils/constants.js` |
 | `items`        | `Array`  | Each item has `itemId`, `itemName`, `itemPrice`, and `quantity`  |
 | `totalPrice`   | `Number` | Required                                                         |
 | `status`       | `String` | `Pending` (default) / `Accepted` / `Delivered` / `Cancelled`     |
@@ -283,6 +301,17 @@ All routes are under `/api`, and all responses from `/api` have `Cache-Control: 
 | `DELETE` | `/api/items/:id`      | `admin+` | Delete a product   |
 
 > `admin+` means `admin`, `moderator`, or `super_admin`. In the same way, `moderator+` means `moderator` or `super_admin`.
+
+### Add / edit rules (`POST` and `PUT`)
+
+| Field          | Rule                                                        |
+| -------------- | ----------------------------------------------------------- |
+| `itemName`     | Required, max **100** characters                            |
+| `itemPrice`    | Number from `0` to **1,000,000**                            |
+| `itemQuantity` | Whole number from `0` to **100,000**                        |
+| `images`       | **1 to 6** images; each `imageURL` must be `http`/`https` and max **500** characters |
+
+The limits are in `ITEM_LIMITS` in `src/utils/constants.js`.
 
 ---
 
@@ -339,6 +368,33 @@ The `guestId` is sent in the URL and is validated before the request runs. Produ
 | `GET`   | `/api/orders`                           | `moderator+` | Get all orders (dashboard)                        |
 | `PATCH` | `/api/orders/:orderId`                  | `moderator+` | Change order status (Body: `{ "status" }`)        |
 
+### Purchase body
+
+Direct purchase (`POST /api/orders`):
+
+```json
+{
+  "itemId": "6a780926966bdf371b4d67bf",
+  "quantity": 2,
+  "purchaseDetails": {
+    "fullName": "Customer Name",
+    "countryCode": "+970",
+    "phoneNumber": "599123456",
+    "region": "hebron"
+  }
+}
+```
+
+Cart checkout (`POST /api/carts/:guestId/checkout`) sends only `purchaseDetails`. After success, the cart is emptied.
+
+`purchaseDetails` rules:
+
+- `fullName` and `region` are required. Hidden Unicode characters are removed.
+- `phoneNumber`: exactly **9 digits** (spaces are removed).
+- `countryCode`: `+970` or `+972`.
+- `region`: one of the values in `REGIONS` (`src/utils/constants.js`), e.g. `hebron`, `dura`, `yatta`.
+- `quantity` (direct purchase): a whole number bigger than `0`.
+
 ### Order statuses
 
 ```text
@@ -373,9 +429,11 @@ Body:
 
 ```json
 {
-  "phoneNumber": "05XXXXXXXX"
+  "phoneNumber": "+970599123456"
 }
 ```
+
+> The number must match **exactly** how it is saved in the order: country code + 9 digits (e.g. `+970599123456`).
 
 If the phone number has at least one order, a token is created and returned:
 
@@ -403,6 +461,12 @@ x-guest-token: <token>
 
 Returns the orders for the token's phone number, from **newest to oldest**.
 
+If the `x-guest-token` header is missing:
+
+```http
+400 Bad Request
+```
+
 If the token is invalid or expired (after 30 days):
 
 ```http
@@ -419,13 +483,18 @@ Only `super_admin` can see analytics.
 | ------ | -------------------------- | ------------- | ---------------------- |
 | `GET`  | `/api/dashboard/analytics` | `super_admin` | Stats for last 7 days  |
 
-The analytics include:
+The response (`data`) includes:
 
-- 💰 Revenue.
-- 📦 Orders by status.
-- 🏆 Best-selling product.
-- 📍 Top regions.
-- ⚠️ Low-stock products.
+| Field            | Meaning                                                   | Period       |
+| ---------------- | --------------------------------------------------------- | ------------ |
+| `totalRevenue`   | 💰 Sum of `totalPrice`                                     | Last 7 days  |
+| `totalOrders`    | Number of orders                                          | Last 7 days  |
+| `ordersByStatus` | 📦 Orders per status (`Pending`, `Accepted`...)            | Last 7 days  |
+| `topProduct`     | 🏆 Best-selling product (by quantity)                      | Last 7 days  |
+| `topRegions`     | 📍 Top 5 regions by number of orders                       | Last 7 days  |
+| `totalItems`     | Number of products                                        | All time     |
+| `activeCarts`    | Number of carts in the database                           | All time     |
+| `lowStockItems`  | ⚠️ Products with quantity less than **5**                  | Now          |
 
 ---
 
@@ -435,9 +504,13 @@ The project has these protections:
 
 ### 🚦 Rate Limiting
 
-Each endpoint has a maximum number of requests per **15 minutes**. The limit depends on how sensitive the endpoint is (for example: 5 for creating an admin, 10 for login, 30 for getting orders by phone number).
+Each endpoint has a maximum number of requests per **15 minutes** (per IP). The limit depends on how sensitive the endpoint is (for example: 5 for creating an admin, 10 for login and enabling/disabling admins, 30 for creating a guest session). Too many requests → `429`.
 
 The goal is to reduce API abuse.
+
+### 🌍 CORS
+
+CORS allows only one origin: the value of `FRONTEND_URL`.
 
 ### ✅ Validation
 
@@ -462,6 +535,17 @@ A central error middleware (`errorMiddleware.js`) turns common errors into clear
 | `TokenExpiredError` / `JsonWebTokenError`  | `401` |
 | Duplicate value (`E11000`)                 | `409` |
 | Any unexpected error                       | `500` |
+
+### 🚧 404 for Unknown Routes
+
+If no route matches, a middleware in `myApp.js` (after all routes, before `errorHandler`) returns JSON:
+
+```json
+{
+  "success": false,
+  "message": "Route not found"
+}
+```
 
 ### 📦 Stock Race Conditions
 
@@ -617,23 +701,6 @@ This is because there is no step to check who owns the number.
 
 **Future fix:** an OTP system that sends a code to the phone before giving a guest token or showing orders.
 
-### 🌐 CORS
-
-CORS is open to all origins now (`app.use(cors())`).
-
-In production, it is better to allow only the frontend domain.
-
-### 🔑 Environment variable check
-
-There is no clear check for required environment variables at startup, like:
-
-```text
-MONGO_URI
-JWT_SECRET
-```
-
-Now the server stops only if the database connection fails. A better way is to check the variables at startup and stop with a clear message if one is missing.
-
 ### 📨 One error message format
 
 Some endpoints use:
@@ -652,11 +719,11 @@ and others use:
 }
 ```
 
-It is better to use one format for all API responses.
+For example, an empty cart at checkout returns `error` instead of `message`. It is better to use one format for all API responses.
 
-### 🚧 Global 404 handler
+### 🧪 Missing tests
 
-There is no global middleware for routes that do not exist yet. It is planned.
+`cart.test.js` and `unit/validation.test.js` are empty. The cart, cart checkout, admin management, guest session, and analytics routes have no tests yet.
 
 ---
 
