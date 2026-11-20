@@ -66,7 +66,10 @@ backend/
 | `dashboardRoutes.js` | `/api/dashboard` | الإحصائيات                  |
 | `itemRoutes.js`      | `/api/items`     | المنتجات                    |
 | `cartRoutes.js`      | `/api/carts`     | السلة                       |
-| `orderRoutes.js`     | `/api`           | الطلبات وجلسات الضيوف       |
+| `orderRoutes.js`     | `/api/orders`    | الطلبات                     |
+| `guestRoutes.js`     | `/api/guest`     | جلسات الضيوف وطلبات الضيف   |
+
+مسار إتمام شراء السلة (`POST /api/carts/:guestId/checkout`) موجود في `cartRoutes.js`، لكنه يستخدم `orderController`.
 
 تم فصل `myApp.js` عن `server.js` حتى تتمكن الاختبارات من استيراد التطبيق وتشغيله بدون فتح منفذ أو الاتصال بقاعدة البيانات الرئيسية.
 
@@ -329,10 +332,10 @@ Authorization: Bearer <token>
 
 | Method  | Endpoint                                | الصلاحية     | الوصف                                    |
 | ------- | --------------------------------------- | ------------ | ---------------------------------------- |
-| `POST`  | `/api/direct-purchase/set-data`         | عام          | شراء مباشر لمنتج واحد بدون المرور بالسلة |
-| `POST`  | `/api/cart-purchase/set-data/:guestId`  | عام          | إتمام شراء جميع محتويات السلة            |
-| `GET`   | `/api/order/get-my-orders?phoneNumber=` | عام          | جلب طلبات المستخدم باستخدام رقم الهاتف   |
-| `POST`  | `/api/guest/verify`                     | عام          | إنشاء Guest Token باستخدام رقم الهاتف    |
+| `POST`  | `/api/orders`                           | عام          | شراء مباشر لمنتج واحد بدون المرور بالسلة |
+| `POST`  | `/api/carts/:guestId/checkout`          | عام          | إتمام شراء جميع محتويات السلة            |
+| `GET`   | `/api/orders/lookup?phoneNumber=`       | عام          | جلب طلبات المستخدم باستخدام رقم الهاتف   |
+| `POST`  | `/api/guest/sessions`                   | عام          | إنشاء Guest Token باستخدام رقم الهاتف    |
 | `GET`   | `/api/guest/orders`                     | Guest Token  | جلب طلبات المستخدم باستخدام التوكن       |
 | `GET`   | `/api/orders`                           | `moderator+` | جلب جميع الطلبات من لوحة التحكم          |
 | `PATCH` | `/api/orders/:orderId`                  | `moderator+` | تعديل حالة الطلب (Body: `{ "status" }`)  |
@@ -364,7 +367,7 @@ Cancelled
 ## 1. إنشاء Guest Token
 
 ```http
-POST /api/guest/verify
+POST /api/guest/sessions
 ```
 
 Body:
@@ -611,16 +614,12 @@ MongoDB Atlas يمنع أي IP غير موجود في القائمة. أضف ا�
 
 حالياً، أي شخص يعرف رقم هاتف مرتبط بطلبات يمكنه:
 
-- استخراج Guest Token عبر `/api/guest/verify`.
-- الاستعلام عن الطلبات مباشرة عبر `/api/order/get-my-orders`.
+- استخراج Guest Token عبر `/api/guest/sessions`.
+- الاستعلام عن الطلبات مباشرة عبر `/api/orders/lookup`.
 
 السبب هو عدم وجود خطوة للتحقق من ملكية الرقم.
 
 **الحل المستقبلي:** إضافة نظام OTP يتم إرسال الرمز فيه إلى رقم الهاتف قبل إصدار الـ Guest Token أو السماح بالوصول إلى الطلبات.
-
-### 🔁 مسارات RESTful أكثر
-
-مسارات تسجيل الدخول والأدمن والإحصائيات والمنتجات والسلة وطلبات لوحة التحكم أصبحت RESTful. مسارات طلبات العملاء (`/direct-purchase/set-data` و`/cart-purchase/set-data/:guestId` و`/order/get-my-orders`) ما زالت بالأسلوب القديم (أفعال داخل الرابط)، وسيتم تحويلها لاحقاً.
 
 ### 🌐 CORS
 

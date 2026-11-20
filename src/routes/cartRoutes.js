@@ -1,7 +1,11 @@
 const express = require("express");
 const router = express.Router();
 const cartController = require("../controllers/cartController");
-const { createLimiter } = require("../middlewares/rateLimiter");
+const orderController = require("../controllers/orderController");
+const {
+  validatePurchaseDetails,
+} = require("../middlewares/validationMiddleware");
+const { addLimiter, createLimiter } = require("../middlewares/rateLimiter");
 const { validateGuestId } = require("../middlewares/validateGuestId");
 const { validateObjectId } = require("../middlewares/validateObjectId");
 
@@ -50,6 +54,15 @@ router.patch(
   validateGuestId,
   validateObjectId("id"),
   cartController.reduceQuantity,
+);
+
+// Buy everything in the cart (creates an order)
+router.post(
+  "/:guestId/checkout",
+  addLimiter,
+  validateGuestId,
+  validatePurchaseDetails,
+  orderController.cartPurchase,
 );
 
 module.exports = router;

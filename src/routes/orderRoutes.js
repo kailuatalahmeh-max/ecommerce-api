@@ -4,54 +4,37 @@ const orderController = require("../controllers/orderController");
 const {
   validatePurchaseDetails,
 } = require("../middlewares/validationMiddleware");
-const { validateGuestId } = require("../middlewares/validateGuestId");
 const { verifyToken } = require("../middlewares/authMiddleware");
-const { addLimiter, createLimiter } = require("../middlewares/rateLimiter");
+const { createLimiter } = require("../middlewares/rateLimiter");
 const { requireRole } = require("../middlewares/requireRole");
 
+// Mounted at /api/orders
+
+// Direct purchase of one item (without the cart)
 router.post(
-  "/direct-purchase/set-data",
+  "/",
   createLimiter(300),
   validatePurchaseDetails,
   orderController.directPurchase,
 );
-router.post(
-  "/cart-purchase/set-data/:guestId",
-  addLimiter,
-  validateGuestId,
-  validatePurchaseDetails,
-  orderController.cartPurchase,
-);
+
 router.get(
-  "/order/get-my-orders",
-  createLimiter(30),
-  orderController.getMyOrders,
-);
-router.get(
-  "/orders",
+  "/",
   createLimiter(300),
   verifyToken,
   requireRole("moderator", "super_admin"),
   orderController.getAllOrdersForAdmin,
 );
+
+// GET /api/orders/lookup?phoneNumber=
+router.get("/lookup", createLimiter(30), orderController.getMyOrders);
+
 router.patch(
-  "/orders/:orderId",
+  "/:orderId",
   createLimiter(300),
   verifyToken,
   requireRole("moderator", "super_admin"),
   orderController.updateOrderStatus,
-);
-
-router.post(
-  "/guest/verify",
-  createLimiter(30),
-  orderController.verifyPhoneAndCreateToken,
-);
-
-router.get(
-  "/guest/orders",
-  createLimiter(60),
-  orderController.getOrdersByToken,
 );
 
 module.exports = router;

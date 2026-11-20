@@ -66,7 +66,10 @@ backend/
 | `dashboardRoutes.js`  | `/api/dashboard` | Analytics                                |
 | `itemRoutes.js`       | `/api/items`     | Products                                 |
 | `cartRoutes.js`       | `/api/carts`     | Cart                                     |
-| `orderRoutes.js`      | `/api`           | Orders and guest sessions                |
+| `orderRoutes.js`      | `/api/orders`    | Orders                                   |
+| `guestRoutes.js`      | `/api/guest`     | Guest sessions and guest orders          |
+
+Cart checkout (`POST /api/carts/:guestId/checkout`) is in `cartRoutes.js`, but it uses `orderController`.
 
 `myApp.js` is separate from `server.js`, so the tests can import the app without opening a port or connecting to the main database.
 
@@ -329,10 +332,10 @@ The `guestId` is sent in the URL and is validated before the request runs. Produ
 
 | Method  | Endpoint                                | Role         | Description                                       |
 | ------- | --------------------------------------- | ------------ | ------------------------------------------------- |
-| `POST`  | `/api/direct-purchase/set-data`         | Public       | Buy one product directly, without the cart        |
-| `POST`  | `/api/cart-purchase/set-data/:guestId`  | Public       | Buy everything in the cart                        |
-| `GET`   | `/api/order/get-my-orders?phoneNumber=` | Public       | Get a user's orders by phone number               |
-| `POST`  | `/api/guest/verify`                     | Public       | Create a guest token with a phone number          |
+| `POST`  | `/api/orders`                           | Public       | Buy one product directly, without the cart        |
+| `POST`  | `/api/carts/:guestId/checkout`          | Public       | Buy everything in the cart                        |
+| `GET`   | `/api/orders/lookup?phoneNumber=`       | Public       | Get a user's orders by phone number               |
+| `POST`  | `/api/guest/sessions`                   | Public       | Create a guest token with a phone number          |
 | `GET`   | `/api/guest/orders`                     | Guest Token  | Get a user's orders with the token                |
 | `GET`   | `/api/orders`                           | `moderator+` | Get all orders (dashboard)                        |
 | `PATCH` | `/api/orders/:orderId`                  | `moderator+` | Change order status (Body: `{ "status" }`)        |
@@ -364,7 +367,7 @@ This is another way to track orders, without sending the phone number with every
 ## 1. Create a guest token
 
 ```http
-POST /api/guest/verify
+POST /api/guest/sessions
 ```
 
 Body:
@@ -611,16 +614,12 @@ These are things I know need work, but I postponed them because of time or cost.
 
 Right now, anyone who knows a phone number with orders can:
 
-- Get a guest token with `/api/guest/verify`.
-- Get the orders directly with `/api/order/get-my-orders`.
+- Get a guest token with `/api/guest/sessions`.
+- Get the orders directly with `/api/orders/lookup`.
 
 This is because there is no step to check who owns the number.
 
 **Future fix:** an OTP system that sends a code to the phone before giving a guest token or showing orders.
-
-### 🔁 More RESTful routes
-
-The auth, admins, dashboard, items, cart, and admin orders routes are now RESTful. The customer order routes (`/direct-purchase/set-data`, `/cart-purchase/set-data/:guestId`, `/order/get-my-orders`) still use the old style (verbs in the URL) and will be moved later.
 
 ### 🌐 CORS
 

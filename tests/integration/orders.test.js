@@ -6,7 +6,7 @@ const { connectTestDB, disconnectTestDB } = require("../setup/db");
 const Item = require("../../src/models/Item");
 const Order = require("../../src/models/Order");
 
-const URL = "/api/direct-purchase/set-data";
+const URL = "/api/orders";
 
 const { addTestItem } = require("../helpers/addTestItem");
 const { createTestOrder } = require("../fixtures/orderData");
@@ -30,7 +30,7 @@ describe("Direct Purchase Testing", () => {
       const totalPrice = order.quantity * testItem.itemPrice;
 
       const res = await request(app)
-        .post("/api/direct-purchase/set-data")
+        .post(URL)
         .send(order);
 
       expect(res.status).toBe(201);
@@ -57,7 +57,7 @@ describe("Direct Purchase Testing", () => {
       const order = createTestOrder("dsadc2");
 
       const res = await request(app)
-        .post("/api/direct-purchase/set-data")
+        .post(URL)
         .send(order);
 
       expect(res.statusCode).toBe(400);
@@ -71,7 +71,7 @@ describe("Direct Purchase Testing", () => {
       const order = createTestOrder(testItem._id, { quantity: -1 });
 
       const res = await request(app)
-        .post("/api/direct-purchase/set-data")
+        .post(URL)
         .send(order);
 
       expect(res.statusCode).toBe(400);
@@ -85,7 +85,7 @@ describe("Direct Purchase Testing", () => {
       const order = createTestOrder(testItem._id, { quantity: 25 });
 
       const res = await request(app)
-        .post("/api/direct-purchase/set-data")
+        .post(URL)
         .send(order);
 
       const { itemQuantity } = await Item.findById(testItem._id)
@@ -102,7 +102,7 @@ describe("Direct Purchase Testing", () => {
       const order = createTestOrder("6a780926966bdf371b4d67bf");
 
       const res = await request(app)
-        .post("/api/direct-purchase/set-data")
+        .post(URL)
         .send(order);
 
       expect(res.statusCode).toBe(404);
