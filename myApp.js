@@ -4,7 +4,9 @@ const cors = require("cors");
 const { createLimiter } = require("./src/middlewares/rateLimiter");
 const errorHandler = require("./src/middlewares/errorMiddleware");
 
+const authRoutes = require("./src/routes/authRoutes");
 const adminRoutes = require("./src/routes/adminRoutes");
+const dashboardRoutes = require("./src/routes/dashboardRoutes");
 const itemRoutes = require("./src/routes/itemRoutes");
 const cartRoutes = require("./src/routes/cartRoutes");
 const orderRoutes = require("./src/routes/orderRoutes");
@@ -52,9 +54,11 @@ if (process.env.NODE_ENV !== "test") {
     next();
   });
 }
-app.use("/api", itemRoutes);
-app.use("/api/admin", adminRoutes);
-app.use("/api/cart", cartRoutes);
+app.use("/api/items", itemRoutes);
+app.use("/api/auth", authRoutes);
+app.use("/api/admins", adminRoutes);
+app.use("/api/dashboard", dashboardRoutes);
+app.use("/api/carts", cartRoutes);
 app.use("/api", orderRoutes);
 
 app.get("/health", createLimiter(1000), (req, res) => {

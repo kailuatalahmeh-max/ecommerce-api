@@ -1,78 +1,91 @@
-# 🛒 متجر إلكتروني — Backend API
+# 🛒 E-Commerce Store — Backend API
 
-باك إند لمتجر إلكتروني مبني باستخدام **Express.js** و **MongoDB**، ويدعم:
+**English** | [العربية](README.ar.md)
 
-- إدارة المنتجات مع إمكانية إضافة عدة صور للمنتج الواحد.
-- سلة مشتريات بدون الحاجة لتسجيل الدخول باستخدام `Guest ID`.
-- إنشاء وإدارة الطلبات.
-- متابعة الطلبات عبر جلسة ضيف باستخدام `Guest Token`.
-- لوحة تحكم إدارية مع نظام صلاحيات متعدد المستويات، وإمكانية تفعيل وتعطيل حسابات الأدمن.
-- حماية الـ API من إساءة الاستخدام والتحقق من المدخلات.
-- معالجة تعارضات المخزون أثناء عمليات الشراء.
-- اختبارات تكامل ووحدة باستخدام Jest و Supertest.
+A backend for an online store, built with **Express.js** and **MongoDB**. It supports:
 
-> 💡 هذا أول مشروع Backend حقيقي لي. بنيته بعد حوالي شهر ونصف من تعلم Express.js و MongoDB.
+- Product management, with many images per product.
+- A shopping cart without login, using a `Guest ID`.
+- Creating and managing orders.
+- Order tracking with a guest session (`Guest Token`).
+- An admin dashboard with multi-level roles, and enabling/disabling admin accounts.
+- API abuse protection and input validation.
+- Handling stock conflicts during purchases.
+- Integration and unit tests with Jest and Supertest.
 
-> هذا الملف يخص الـ Backend فقط. المستودع يحتوي على مجلدين: `backend/` و `frontend/`.
+> 💡 This is my first real backend project. I built it after about one and a half months of learning Express.js and MongoDB.
+
+> This file is about the backend only. The repository has two folders: `backend/` and `frontend/`. See the [frontend README](../frontend/README.md).
 
 ---
 
-## 🧰 التقنيات المستخدمة
+## 🧰 Tech Stack
 
-| التقنية                  | الاستخدام                                  |
+| Technology               | Used for                                   |
 | ------------------------ | ------------------------------------------ |
-| **Node.js + Express.js** | بناء السيرفر والـ API                      |
-| **MongoDB + Mongoose**   | قاعدة البيانات وإدارة الـ Models           |
-| **JWT (jsonwebtoken)**   | مصادقة الأدمن                              |
-| **bcrypt**               | تشفير كلمات المرور                         |
-| **express-rate-limit**   | حماية الـ endpoints من إساءة الاستخدام     |
-| **cors**                 | التعامل مع الطلبات القادمة من الـ Frontend |
-| **dotenv**               | قراءة متغيرات البيئة من ملفات `.env`       |
-| **crypto**               | توليد توكنات جلسات الضيوف                  |
-| **Jest + Supertest**     | اختبارات الـ API                           |
+| **Node.js + Express.js** | Server and API                             |
+| **MongoDB + Mongoose**   | Database and models                        |
+| **JWT (jsonwebtoken)**   | Admin authentication                       |
+| **bcrypt**               | Password hashing                           |
+| **express-rate-limit**   | Protecting endpoints from abuse            |
+| **cors**                 | Handling requests from the frontend        |
+| **dotenv**               | Reading environment variables from `.env`  |
+| **crypto**               | Generating guest session tokens            |
+| **Jest + Supertest**     | API tests                                  |
 
 ---
 
-## 📁 هيكل المشروع (Backend)
+## 📁 Project Structure (Backend)
 
 ```text
 backend/
-├── myApp.js              # تعريف تطبيق Express (الـ middlewares والمسارات) — تستورده الاختبارات
-├── server.js             # نقطة التشغيل: الاتصال بقاعدة البيانات ثم تشغيل السيرفر
-├── scripts/              # سكربتات صيانة وترحيل بيانات (تُشغَّل يدوياً)
+├── myApp.js              # Express app (middlewares and routes) — imported by the tests
+├── server.js             # Entry point: connects to the database, then starts the server
+├── scripts/              # Maintenance and data migration scripts (run by hand)
 ├── src/
-│   ├── config/           # الاتصال بقاعدة البيانات
-│   ├── controllers/      # منطق العمليات
-│   ├── middlewares/      # المصادقة، الصلاحيات، التحقق، Rate Limiting، معالجة الأخطاء
+│   ├── config/           # Database connection
+│   ├── controllers/      # Business logic
+│   ├── middlewares/      # Auth, roles, validation, rate limiting, error handling
 │   ├── models/           # Admin, Cart, GuestSession, Item, Order
-│   ├── routes/           # تعريف المسارات
-│   └── utils/            # ثوابت مشتركة
+│   ├── routes/           # Route definitions
+│   └── utils/            # Shared constants
 └── tests/
-    ├── setup/            # الاتصال بقاعدة بيانات الاختبار
-    ├── fixtures/         # بيانات جاهزة للاختبارات
-    ├── helpers/          # دوال مساعدة (إنشاء أدمن تجريبي، إضافة منتج...)
-    ├── integration/      # اختبارات الـ endpoints
-    └── unit/             # اختبارات الوحدة
+    ├── setup/            # Test database connection
+    ├── fixtures/         # Ready-made test data
+    ├── helpers/          # Helper functions (create test admin, add item...)
+    ├── integration/      # Endpoint tests
+    └── unit/             # Unit tests
 ```
 
-تم فصل `myApp.js` عن `server.js` حتى تتمكن الاختبارات من استيراد التطبيق وتشغيله بدون فتح منفذ أو الاتصال بقاعدة البيانات الرئيسية.
+### Route files
+
+| File                  | Mounted at       | Content                                  |
+| --------------------- | ---------------- | ---------------------------------------- |
+| `authRoutes.js`       | `/api/auth`      | Admin login                              |
+| `adminRoutes.js`      | `/api/admins`    | Admin account management                 |
+| `dashboardRoutes.js`  | `/api/dashboard` | Analytics                                |
+| `itemRoutes.js`       | `/api/items`     | Products                                 |
+| `cartRoutes.js`       | `/api/carts`     | Cart                                     |
+| `orderRoutes.js`      | `/api`           | Orders and guest sessions                |
+
+`myApp.js` is separate from `server.js`, so the tests can import the app without opening a port or connecting to the main database.
 
 ---
 
-## ⚙️ الإعداد والتشغيل
+## ⚙️ Setup and Run
 
-جميع الأوامر التالية تُنفَّذ من داخل مجلد `backend/`.
+Run all commands inside the `backend/` folder.
 
-### 1. تثبيت الحزم
+### 1. Install packages
 
 ```bash
 cd backend
 npm install
 ```
 
-### 2. إعداد متغيرات البيئة
+### 2. Environment variables
 
-أنشئ ملف `.env` **داخل مجلد `backend/`**:
+Create a `.env` file **inside `backend/`**:
 
 ```env
 PORT=5000
@@ -80,33 +93,33 @@ MONGO_URI=your_mongodb_connection_string
 JWT_SECRET=your_jwt_secret_key
 ```
 
-`PORT` اختياري، والقيمة الافتراضية `5000`.
+`PORT` is optional. The default is `5000`.
 
-### 3. تشغيل السيرفر
+### 3. Start the server
 
 ```bash
 npm start
 ```
 
-أو للتطوير مع إعادة التشغيل التلقائية عند تعديل الملفات (nodemon):
+Or for development, with auto-restart on file changes (nodemon):
 
 ```bash
 npm run dev
 ```
 
-يبدأ السيرفر بالاتصال بقاعدة البيانات، وإذا فشل الاتصال يتوقف التشغيل مباشرة. بعد نجاحه يعمل افتراضياً على:
+The server connects to the database first. If the connection fails, it stops. If it works, the server runs at:
 
 ```text
 http://localhost:5000
 ```
 
-### 4. التأكد من أن السيرفر يعمل
+### 4. Check that the server is running
 
 ```http
 GET /health
 ```
 
-الاستجابة:
+Response:
 
 ```json
 {
@@ -114,74 +127,74 @@ GET /health
 }
 ```
 
-> ملاحظة: الـ `/health` endpoint محمي أيضاً باستخدام Rate Limiting، وهو خارج المسار `/api`.
+> Note: `/health` also has rate limiting, and it is outside the `/api` path.
 
 ---
 
-# 🧪 الاختبارات
+# 🧪 Tests
 
 ```bash
 npm test
 ```
 
-يتم تشغيل الاختبارات عبر `jest --runInBand` (بالتتابع، لأنها تتشارك قاعدة بيانات واحدة).
+Tests run with `jest --runInBand` (one after another, because they share one database).
 
-### قاعدة بيانات الاختبار
+### Test database
 
-الاختبارات تعمل على **قاعدة MongoDB حقيقية منفصلة** وليس على قاعدة الإنتاج. أنشئ ملف `.env.testing` داخل `backend/` (وهو غير مرفوع إلى GitHub لأنه في `.gitignore`):
+Tests use a **real, separate MongoDB database**, not the production one. Create a `.env.testing` file inside `backend/` (it is in `.gitignore`, so it is not pushed to GitHub):
 
 ```env
 MONGO_URI=your_testing_mongodb_connection_string/testingDataBase
 JWT_SECRET=any_test_secret
 ```
 
-> ⚠️ **تحذير:** الاختبارات تحذف بيانات الجداول (`Admin` و`Item` و`Order`...) قبل كل اختبار. لذلك يوجد حماية تمنع التشغيل إذا لم يكن اسم قاعدة البيانات في الرابط وفي الاتصال الفعلي هو `testingDataBase` بالضبط. لا تشير هذا الملف إلى قاعدة بيانات حقيقية أبداً.
+> ⚠️ **Warning:** the tests delete collection data (`Admin`, `Item`, `Order`...) before each test. So there is a guard: the tests stop if the database name in the URI and in the real connection is not exactly `testingDataBase`. Never point this file to a real database.
 
-### ما الذي تغطيه الاختبارات؟
+### What do the tests cover?
 
-- **المنتجات:** جلب المنتجات، الإضافة والتعديل بواسطة أدمن، رفض التوكن المفقود أو غير الصالح، رفض الأدمن المعطّل، رفض البيانات غير الصالحة (سعر سالب، روابط `javascript:`)، والتعامل مع المعرّفات غير الصالحة أو غير الموجودة.
-- **الشراء المباشر:** نجاح الشراء وتحديث المخزون والإجمالي، رفض المعرّف غير الصالح، الكمية غير الصالحة، الكمية الأكبر من المخزون، والمنتج غير الموجود.
-- **تعارض المخزون:** عند إرسال طلبين متزامنين على مخزون يكفي لطلب واحد فقط، ينجح واحد (`201`) ويفشل الآخر (`400`)، ويبقى عدد الطلبات المحفوظة `1`.
-- بالإضافة إلى اختبارات المصادقة والسلة والـ health واختبارات الوحدة للتحقق من المدخلات.
+- **Products:** get products, add and edit by an admin, reject missing or invalid tokens, reject disabled admins, reject invalid data (negative price, `javascript:` links), and handle invalid or missing IDs.
+- **Direct purchase:** successful purchase updates stock and total; rejects invalid ID, invalid quantity, quantity bigger than stock, and missing product.
+- **Stock conflict:** two requests at the same time for stock that is enough for only one: one succeeds (`201`), the other fails (`400`), and only `1` order is saved.
+- Also auth, cart, health, and unit tests for input validation.
 
 ---
 
-# 🔑 نظام الصلاحيات (Roles)
+# 🔑 Roles
 
-يحتوي النظام على **3 مستويات من الصلاحيات**، ويتم حماية كل endpoint إداري حسب الصلاحية المطلوبة.
+The system has **3 role levels**. Each admin endpoint is protected by the needed role.
 
-| الرتبة        | الصلاحيات                                                                              |
-| ------------- | -------------------------------------------------------------------------------------- |
-| `admin`       | إضافة، تعديل وحذف المنتجات                                                             |
-| `moderator`   | جميع صلاحيات `admin` بالإضافة إلى إدارة الطلبات                                        |
-| `super_admin` | جميع الصلاحيات بالإضافة إلى إدارة حسابات الأدمن (إنشاء، تفعيل، تعطيل) والوصول للإحصائيات |
+| Role          | Permissions                                                                       |
+| ------------- | --------------------------------------------------------------------------------- |
+| `admin`       | Add, edit, and delete products                                                    |
+| `moderator`   | Everything `admin` can do, plus order management                                  |
+| `super_admin` | Everything, plus admin account management (create, enable, disable) and analytics |
 
-### مصادقة الأدمن
+### Admin authentication
 
-تتم المصادقة باستخدام **JWT Bearer Token**:
+Authentication uses a **JWT Bearer Token**:
 
 ```http
 Authorization: Bearer <token>
 ```
 
-الحساب المعطّل (`isActive: false`) يتم رفض طلباته بـ `401` حتى لو كان التوكن الخاص به لا يزال صالحاً.
+A disabled account (`isActive: false`) gets `401`, even if its token is still valid.
 
 ---
 
-# 🗄️ نماذج البيانات (Models)
+# 🗄️ Models
 
-## 🛍️ المنتج (Item)
+## 🛍️ Item
 
-يمكن لكل منتج أن يحتوي على عدد ديناميكي من الصور، حيث يتم تخزين الصور كمصفوفة من الكائنات بدلاً من الاعتماد على رابط صورة واحد.
+Each product can have any number of images. Images are stored as an array of objects, not as one image link.
 
-| الحقل          | النوع            | الملاحظات                                                         |
-| -------------- | ---------------- | ----------------------------------------------------------------- |
-| `images`       | `[{ imageURL }]` | مصفوفة صور، افتراضياً فارغة، وكل صورة يجب أن تحتوي على `imageURL` |
-| `itemName`     | `String`         | مطلوب                                                             |
-| `itemPrice`    | `Number`         | مطلوب، ولا يمكن أن يكون أقل من `0`                                |
-| `itemQuantity` | `Number`         | الافتراضي `0`، ولا يمكن أن يكون أقل من `0`                        |
+| Field          | Type             | Notes                                                       |
+| -------------- | ---------------- | ----------------------------------------------------------- |
+| `images`       | `[{ imageURL }]` | Image array, empty by default; each image needs `imageURL`  |
+| `itemName`     | `String`         | Required                                                    |
+| `itemPrice`    | `Number`         | Required, cannot be less than `0`                           |
+| `itemQuantity` | `Number`         | Default `0`, cannot be less than `0`                        |
 
-### مثال
+### Example
 
 ```json
 {
@@ -193,7 +206,7 @@ Authorization: Bearer <token>
       "imageURL": "https://example.com/img2.jpg"
     }
   ],
-  "itemName": "اسم المنتج",
+  "itemName": "Product name",
   "itemPrice": 50,
   "itemQuantity": 10
 }
@@ -201,123 +214,130 @@ Authorization: Bearer <token>
 
 ---
 
-## 👤 الأدمن (Admin)
+## 👤 Admin
 
-| الحقل            | النوع     | الملاحظات                                                          |
+| Field            | Type      | Notes                                                              |
 | ---------------- | --------- | ------------------------------------------------------------------ |
-| `fullName`       | `String`  | مطلوب                                                              |
-| `firstName`      | `String`  | يُحسب تلقائياً من أول كلمة في `fullName` عند الحفظ                 |
-| `email`          | `String`  | مطلوب، فريد، يُحفظ بأحرف صغيرة                                     |
-| `password`       | `String`  | مطلوب، مشفّر، ولا يُرجَع في الاستعلامات افتراضياً (`select: false`) |
-| `role`           | `String`  | `admin` / `moderator` / `super_admin`، والافتراضي `admin`          |
-| `isActive`       | `Boolean` | الافتراضي `true`، والحساب المعطّل لا يستطيع تنفيذ العمليات         |
-| `lastActivityAt` | `Date`    | آخر نشاط للحساب، الافتراضي `null`                                   |
+| `fullName`       | `String`  | Required                                                           |
+| `firstName`      | `String`  | Set automatically from the first word of `fullName` on save        |
+| `email`          | `String`  | Required, unique, saved in lowercase                               |
+| `password`       | `String`  | Required, hashed, not returned in queries by default (`select: false`) |
+| `role`           | `String`  | `admin` / `moderator` / `super_admin`, default `admin`             |
+| `isActive`       | `Boolean` | Default `true`; a disabled account cannot do any action            |
+| `lastActivityAt` | `Date`    | Last activity of the account, default `null`                       |
 
 ---
 
-## 🛒 السلة (Cart)
+## 🛒 Cart
 
-| الحقل     | النوع                      | الملاحظات                                               |
-| --------- | -------------------------- | ------------------------------------------------------- |
-| `guestId` | `String`                   | مطلوب وفريد                                             |
-| `items`   | `[{ itemId, quantity }]`   | `quantity` لا يقل عن `1`                                |
+| Field     | Type                     | Notes                         |
+| --------- | ------------------------ | ----------------------------- |
+| `guestId` | `String`                 | Required and unique           |
+| `items`   | `[{ itemId, quantity }]` | `quantity` is at least `1`    |
 
-تُحذف السلة تلقائياً بعد **7 أيام** من آخر تحديث لها (TTL Index على `updatedAt`).
-
----
-
-## 📦 الطلب (Order)
-
-| الحقل          | النوع    | الملاحظات                                                                  |
-| -------------- | -------- | -------------------------------------------------------------------------- |
-| `customerName` | `String` | مطلوب                                                                      |
-| `phoneNumber`  | `String` | مطلوب                                                                      |
-| `region`       | `String` | مطلوب                                                                      |
-| `items`        | `Array`  | كل عنصر يحتوي على `itemId` و`itemName` و`itemPrice` و`quantity`           |
-| `totalPrice`   | `Number` | مطلوب                                                                      |
-| `status`       | `String` | `Pending` (الافتراضي) / `Accepted` / `Delivered` / `Cancelled`             |
-
-يوجد Index على (`phoneNumber`, `createdAt`) لتسريع جلب طلبات المستخدم.
+The cart is deleted automatically **7 days** after its last update (TTL index on `updatedAt`).
 
 ---
 
-## 🎟️ جلسة الضيف (GuestSession)
+## 📦 Order
 
-تُستخدم جلسة الضيف لمتابعة الطلبات بدون الحاجة إلى إرسال رقم الهاتف في كل طلب.
+| Field          | Type     | Notes                                                            |
+| -------------- | -------- | ---------------------------------------------------------------- |
+| `customerName` | `String` | Required                                                         |
+| `phoneNumber`  | `String` | Required                                                         |
+| `region`       | `String` | Required                                                         |
+| `items`        | `Array`  | Each item has `itemId`, `itemName`, `itemPrice`, and `quantity`  |
+| `totalPrice`   | `Number` | Required                                                         |
+| `status`       | `String` | `Pending` (default) / `Accepted` / `Delivered` / `Cancelled`     |
 
-| الحقل         | النوع    | الملاحظات                                                                              |
-| ------------- | -------- | -------------------------------------------------------------------------------------- |
-| `phoneNumber` | `String` | رقم الهاتف المرتبط بالجلسة                                                             |
-| `token`       | `String` | توكن فريد يتم توليده عشوائياً باستخدام `crypto.randomBytes` بطول 32 bytes وبصيغة `hex` |
-| `createdAt`   | `Date`   | يتم حذف الجلسة تلقائياً بعد **30 يوماً** باستخدام TTL Index                            |
-
----
-
-# 📚 توثيق الـ API Endpoints
-
-جميع المسارات تحت `/api`، وجميع الاستجابات من هذا المسار تحمل `Cache-Control: no-store`.
-
-## 🛍️ المنتجات (Items)
-
-| Method   | Endpoint              | الصلاحية | الوصف             |
-| -------- | --------------------- | -------- | ----------------- |
-| `GET`    | `/api/getItemsData`   | عام      | جلب جميع المنتجات |
-| `POST`   | `/api/addItem`        | `admin+` | إضافة منتج جديد   |
-| `PUT`    | `/api/item/edit/:id`  | `admin+` | تعديل منتج        |
-| `DELETE` | `/api/deleteItem/:id` | `admin+` | حذف منتج          |
-
-> `admin+` تعني: `admin` أو `moderator` أو `super_admin`. وبنفس الطريقة `moderator+` تعني: `moderator` أو `super_admin`.
+There is an index on (`phoneNumber`, `createdAt`) to get a user's orders faster.
 
 ---
 
-## 🔐 الأدمن (Admin)
+## 🎟️ GuestSession
 
-| Method | Endpoint                          | الصلاحية      | الوصف                                                           |
-| ------ | --------------------------------- | ------------- | --------------------------------------------------------------- |
-| `POST` | `/api/admin/logIn`                | عام           | تسجيل دخول الأدمن وإرجاع JWT Token                              |
-| `POST` | `/api/admin/create-new-admin`     | `super_admin` | إنشاء حساب أدمن جديد                                            |
-| `GET`  | `/api/admin/get-admins`           | `super_admin` | جلب جميع الأدمنز بدون كلمات المرور (`404` إذا لا توجد بيانات)   |
-| `PUT`  | `/api/admin/disable-admin/:adminId` | `super_admin` | تعطيل حساب أدمن                                               |
-| `PUT`  | `/api/admin/enable-admin/:adminId`  | `super_admin` | تفعيل حساب أدمن                                               |
+A guest session lets the user track orders without sending the phone number in every request.
 
-### قواعد تعطيل الحسابات
-
-- لا يمكن للأدمن تعطيل حسابه بنفسه (`400`).
-- لا يمكن تعطيل آخر حساب `super_admin` نشط (`400`)، حتى لا يبقى النظام بدون مدير عام.
-- أي حساب غير موجود يرجع `404`.
+| Field         | Type     | Notes                                                                       |
+| ------------- | -------- | --------------------------------------------------------------------------- |
+| `phoneNumber` | `String` | Phone number linked to the session                                          |
+| `token`       | `String` | Unique random token from `crypto.randomBytes` (32 bytes, `hex` format)      |
+| `createdAt`   | `Date`   | The session is deleted automatically after **30 days** (TTL index)          |
 
 ---
 
-## 🛒 السلة (Cart)
+# 📚 API Endpoints
 
-يعتمد نظام السلة على `guestId` من نوع **UUID v4**، ويتم تخزينه في متصفح المستخدم للتعرف على سلته بدون الحاجة إلى تسجيل الدخول.
+All routes are under `/api`, and all responses from `/api` have `Cache-Control: no-store`.
 
-يتم إرسال `guestId` ضمن مسار الطلب، ويتم التحقق منه قبل معالجة العملية، بالإضافة إلى التحقق من معرّفات المنتجات `:id` عند الحاجة.
+## 🛍️ Items
 
-| Method   | Endpoint                                   | الوصف                    |
-| -------- | ------------------------------------------ | ------------------------ |
-| `GET`    | `/api/cart/:guestId`                       | جلب محتويات السلة        |
-| `POST`   | `/api/cart/add/:guestId`                   | إضافة منتج إلى السلة     |
-| `PATCH`  | `/api/cart/add-quantity/:guestId/:id`      | زيادة كمية منتج في السلة |
-| `PATCH`  | `/api/cart/reducing-quantity/:guestId/:id` | تقليل كمية منتج في السلة |
-| `DELETE` | `/api/cart/delete/:guestId/:id`            | حذف منتج واحد من السلة   |
-| `DELETE` | `/api/cart/delete-all/:guestId`            | تفريغ السلة بالكامل      |
+| Method   | Endpoint              | Role     | Description        |
+| -------- | --------------------- | -------- | ------------------ |
+| `GET`    | `/api/items`          | Public   | Get all products   |
+| `POST`   | `/api/items`          | `admin+` | Add a new product  |
+| `PUT`    | `/api/items/:id`      | `admin+` | Edit a product     |
+| `DELETE` | `/api/items/:id`      | `admin+` | Delete a product   |
+
+> `admin+` means `admin`, `moderator`, or `super_admin`. In the same way, `moderator+` means `moderator` or `super_admin`.
 
 ---
 
-## 📦 الطلبات (Orders)
+## 🔑 Auth
 
-| Method  | Endpoint                                | الصلاحية     | الوصف                                    |
-| ------- | --------------------------------------- | ------------ | ---------------------------------------- |
-| `POST`  | `/api/direct-purchase/set-data`         | عام          | شراء مباشر لمنتج واحد بدون المرور بالسلة |
-| `POST`  | `/api/cart-purchase/set-data/:guestId`  | عام          | إتمام شراء جميع محتويات السلة            |
-| `GET`   | `/api/order/get-my-orders?phoneNumber=` | عام          | جلب طلبات المستخدم باستخدام رقم الهاتف   |
-| `POST`  | `/api/guest/verify`                     | عام          | إنشاء Guest Token باستخدام رقم الهاتف    |
-| `GET`   | `/api/guest/orders`                     | Guest Token  | جلب طلبات المستخدم باستخدام التوكن       |
-| `GET`   | `/api/admin-control/orders`             | `moderator+` | جلب جميع الطلبات من لوحة التحكم          |
-| `PATCH` | `/api/admin-control/order-edit-status`  | `moderator+` | تعديل حالة الطلب                         |
+| Method | Endpoint          | Role   | Description                          |
+| ------ | ----------------- | ------ | ------------------------------------ |
+| `POST` | `/api/auth/login` | Public | Admin login, returns a JWT token     |
 
-### حالات الطلب
+---
+
+## 🔐 Admins
+
+| Method  | Endpoint                       | Role          | Description                                             |
+| ------- | ------------------------------ | ------------- | ------------------------------------------------------- |
+| `POST`  | `/api/admins`                  | `super_admin` | Create a new admin account                              |
+| `GET`   | `/api/admins`                  | `super_admin` | Get all admins without passwords (`404` if none)        |
+| `PATCH` | `/api/admins/:adminId/disable` | `super_admin` | Disable an admin account                                |
+| `PATCH` | `/api/admins/:adminId/enable`  | `super_admin` | Enable an admin account                                 |
+
+### Rules for disabling accounts
+
+- An admin cannot disable their own account (`400`).
+- You cannot disable the last active `super_admin` (`400`), so the system always has a super admin.
+- An account that does not exist returns `404`.
+
+---
+
+## 🛒 Cart
+
+The cart uses a `guestId` of type **UUID v4**. It is stored in the user's browser, so the store knows the cart without login.
+
+The `guestId` is sent in the URL and is validated before the request runs. Product IDs (`:id`) are validated too when needed.
+
+| Method   | Endpoint                                   | Description                    |
+| -------- | ------------------------------------------ | ------------------------------ |
+| `GET`    | `/api/carts/:guestId`                      | Get cart content               |
+| `POST`   | `/api/carts/:guestId/items`                | Add a product to the cart      |
+| `PATCH`  | `/api/carts/:guestId/items/:id/increase`   | Increase product quantity      |
+| `PATCH`  | `/api/carts/:guestId/items/:id/decrease`   | Decrease product quantity      |
+| `DELETE` | `/api/carts/:guestId/items/:id`            | Remove one product             |
+| `DELETE` | `/api/carts/:guestId/items`                | Empty the cart                 |
+
+---
+
+## 📦 Orders
+
+| Method  | Endpoint                                | Role         | Description                                       |
+| ------- | --------------------------------------- | ------------ | ------------------------------------------------- |
+| `POST`  | `/api/direct-purchase/set-data`         | Public       | Buy one product directly, without the cart        |
+| `POST`  | `/api/cart-purchase/set-data/:guestId`  | Public       | Buy everything in the cart                        |
+| `GET`   | `/api/order/get-my-orders?phoneNumber=` | Public       | Get a user's orders by phone number               |
+| `POST`  | `/api/guest/verify`                     | Public       | Create a guest token with a phone number          |
+| `GET`   | `/api/guest/orders`                     | Guest Token  | Get a user's orders with the token                |
+| `GET`   | `/api/orders`                           | `moderator+` | Get all orders (dashboard)                        |
+| `PATCH` | `/api/orders/:orderId`                  | `moderator+` | Change order status (Body: `{ "status" }`)        |
+
+### Order statuses
 
 ```text
 Pending
@@ -326,22 +346,22 @@ Delivered
 Cancelled
 ```
 
-### أمثلة على استجابات الشراء المباشر
+### Direct purchase responses
 
-| الحالة                                  | الكود |
-| --------------------------------------- | ----- |
-| نجاح الشراء (يحتوي `data.orderId` و`data.updatedItem`) | `201` |
-| بيانات غير صالحة (معرّف أو كمية)        | `400` |
-| الكمية المطلوبة أكبر من المخزون         | `400` |
-| المنتج غير موجود أو محذوف               | `404` |
+| Case                                                          | Code  |
+| ------------------------------------------------------------- | ----- |
+| Success (has `data.orderId` and `data.updatedItem`)           | `201` |
+| Invalid data (ID or quantity)                                 | `400` |
+| Quantity is bigger than stock                                 | `400` |
+| Product not found or deleted                                  | `404` |
 
 ---
 
-# 🎟️ متابعة الطلبات باستخدام Guest Session
+# 🎟️ Order Tracking with a Guest Session
 
-يوفر النظام طريقة بديلة لمتابعة الطلبات بدون الحاجة إلى إرسال رقم الهاتف مع كل طلب.
+This is another way to track orders, without sending the phone number with every request.
 
-## 1. إنشاء Guest Token
+## 1. Create a guest token
 
 ```http
 POST /api/guest/verify
@@ -355,7 +375,7 @@ Body:
 }
 ```
 
-إذا كان رقم الهاتف مرتبطاً بطلب واحد على الأقل، يتم إنشاء توكن وإرجاعه:
+If the phone number has at least one order, a token is created and returned:
 
 ```json
 {
@@ -364,7 +384,7 @@ Body:
 }
 ```
 
-إذا لم يكن هناك أي طلب مرتبط بالرقم، يتم إرجاع:
+If there is no order for this number:
 
 ```http
 404 Not Found
@@ -372,16 +392,16 @@ Body:
 
 ---
 
-## 2. جلب الطلبات باستخدام التوكن
+## 2. Get orders with the token
 
 ```http
 GET /api/guest/orders
 x-guest-token: <token>
 ```
 
-يتم إرجاع الطلبات المرتبطة برقم الهاتف الخاص بالتوكن، مرتبة من **الأحدث إلى الأقدم**.
+Returns the orders for the token's phone number, from **newest to oldest**.
 
-إذا كان التوكن غير صالح أو انتهت صلاحيته بعد 30 يوماً:
+If the token is invalid or expired (after 30 days):
 
 ```http
 401 Unauthorized
@@ -389,137 +409,137 @@ x-guest-token: <token>
 
 ---
 
-# 📊 الإحصائيات (Analytics)
+# 📊 Analytics
 
-الإحصائيات متاحة فقط لـ `super_admin`.
+Only `super_admin` can see analytics.
 
-| Method | Endpoint               | الصلاحية      | الوصف               |
-| ------ | ---------------------- | ------------- | ------------------- |
-| `GET`  | `/api/admin/analytics` | `super_admin` | إحصائيات آخر 7 أيام |
+| Method | Endpoint                   | Role          | Description            |
+| ------ | -------------------------- | ------------- | ---------------------- |
+| `GET`  | `/api/dashboard/analytics` | `super_admin` | Stats for last 7 days  |
 
-تشمل الإحصائيات:
+The analytics include:
 
-- 💰 الإيرادات.
-- 📦 الطلبات حسب الحالة.
-- 🏆 أكثر المنتجات مبيعاً.
-- 📍 أكثر المناطق طلباً.
-- ⚠️ المنتجات منخفضة المخزون.
+- 💰 Revenue.
+- 📦 Orders by status.
+- 🏆 Best-selling product.
+- 📍 Top regions.
+- ⚠️ Low-stock products.
 
 ---
 
-# 🛡️ الحماية والأمان
+# 🛡️ Security
 
-يحتوي المشروع على مجموعة من الإجراءات الأمنية والحمايات:
+The project has these protections:
 
 ### 🚦 Rate Limiting
 
-كل endpoint محمي بحد أقصى لعدد الطلبات خلال فترة **15 دقيقة**، مع اختلاف الحد حسب حساسية الـ endpoint (مثلاً: 5 طلبات لإنشاء أدمن جديد، و10 لتسجيل الدخول، و30 لجلب الطلبات برقم الهاتف).
+Each endpoint has a maximum number of requests per **15 minutes**. The limit depends on how sensitive the endpoint is (for example: 5 for creating an admin, 10 for login, 30 for getting orders by phone number).
 
-الهدف هو تقليل احتمالية إساءة استخدام الـ API.
+The goal is to reduce API abuse.
 
 ### ✅ Validation
 
-يتم التحقق من المدخلات قبل معالجتها، بما في ذلك:
+Inputs are checked before they are used, including:
 
-- الأسعار.
-- الكميات.
-- روابط الصور (مع رفض الروابط الخطرة مثل `javascript:`).
-- أرقام الهواتف.
+- Prices.
+- Quantities.
+- Image links (dangerous links like `javascript:` are rejected).
+- Phone numbers.
 - `guestId`.
-- معرّفات MongoDB `ObjectId`.
-- وغيرها من المدخلات.
+- MongoDB `ObjectId`s.
+- And other inputs.
 
-### ⚠️ معالجة الأخطاء المركزية (Centralized Error Handler)
+### ⚠️ Centralized Error Handler
 
-يوجد Middleware مركزي لمعالجة الأخطاء (`errorMiddleware.js`) يحوّل الأخطاء الشائعة إلى استجابات مفهومة:
+A central error middleware (`errorMiddleware.js`) turns common errors into clear responses:
 
-| نوع الخطأ                              | الكود |
-| -------------------------------------- | ----- |
-| `ValidationError` (أخطاء Mongoose)     | `400` |
-| `CastError` (معرّف غير صالح)           | `400` |
-| `TokenExpiredError` / `JsonWebTokenError` | `401` |
-| قيمة مكررة (`E11000`)                  | `409` |
-| أي خطأ غير متوقع                       | `500` |
+| Error type                                 | Code  |
+| ------------------------------------------ | ----- |
+| `ValidationError` (Mongoose)               | `400` |
+| `CastError` (invalid ID)                   | `400` |
+| `TokenExpiredError` / `JsonWebTokenError`  | `401` |
+| Duplicate value (`E11000`)                 | `409` |
+| Any unexpected error                       | `500` |
 
-### 📦 معالجة تعارض المخزون (Stock Race Conditions)
+### 📦 Stock Race Conditions
 
-عمليات الشراء تستخدم تحديثات ذرية عبر:
+Purchases use atomic updates with:
 
 ```text
 findOneAndUpdate
 ```
 
-مع شرط التحقق من توفر الكمية.
+with a condition that checks the available quantity.
 
-هذا يمنع بيع كمية أكبر من المخزون المتوفر في حال وجود عدة عمليات شراء في نفس الوقت، وهذا السلوك مغطّى باختبار تكامل يرسل طلبين متزامنين.
+This stops selling more than the stock when many purchases happen at the same time. An integration test covers this by sending two requests at the same time.
 
-كما توجد آلية **Rollback** تلقائية في حال فشل أي جزء من عملية شراء تحتوي على عدة منتجات.
+There is also an automatic **rollback** if any part of a multi-product purchase fails.
 
-### 🔐 تشفير كلمات المرور
+### 🔐 Password Hashing
 
-يتم استخدام **bcrypt** لتشفير كلمات مرور الأدمن، ولا يتم تخزين كلمات المرور كنص صريح، كما أنها لا تُرجَع في الاستعلامات افتراضياً.
+Admin passwords are hashed with **bcrypt**. They are never stored as plain text, and they are not returned in queries by default.
 
 ### 🎟️ Guest Tokens
 
-يتم توليد توكنات الضيوف بشكل عشوائي باستخدام:
+Guest tokens are random, created with:
 
 ```javascript
 crypto.randomBytes();
 ```
 
-وتنتهي صلاحيتها تلقائياً بعد **30 يوماً**.
+They expire automatically after **30 days**.
 
-### 🚫 منع التخزين المؤقت
+### 🚫 No Caching
 
-جميع المسارات تحت `/api` تُرجع:
+All routes under `/api` return:
 
 ```http
 Cache-Control: no-store
 ```
 
-لتقليل احتمالية تخزين بيانات الطلبات أو غيرها في الـ cache.
+This lowers the chance that order data is saved in a cache.
 
-### 📏 حد حجم الطلب
+### 📏 Request Size Limit
 
-تم تحديد حجم الـ request body إلى:
+The request body size is limited to:
 
 ```text
 1mb
 ```
 
-لمنع إرسال بيانات ضخمة إلى السيرفر.
+This stops very large data from being sent to the server.
 
 ### 🌐 Trust Proxy
 
-تم تفعيل:
+This is enabled:
 
 ```javascript
 app.set("trust proxy", 1);
 ```
 
-حتى يتمكن Rate Limiter من قراءة عنوان الـ IP الحقيقي للمستخدم عند تشغيل التطبيق خلف Proxy مثل **Render**.
+So the rate limiter can read the user's real IP when the app runs behind a proxy like **Render**.
 
 ---
 
-# 📋 تسجيل الطلبات (Request Logging)
+# 📋 Request Logging
 
-يتم تسجيل كل request في الـ console عند انتهاء معالجته. التسجيل **معطّل أثناء الاختبارات** (`NODE_ENV=test`).
+Each request is logged to the console when it finishes. Logging is **off during tests** (`NODE_ENV=test`).
 
-المعلومات المسجلة تشمل:
+The log includes:
 
-- الوقت (وقت بداية الطلب).
-- HTTP Method.
+- Time (when the request started).
+- HTTP method.
 - URL.
-- IP Address.
-- HTTP Status Code.
-- مدة معالجة الطلب.
+- IP address.
+- HTTP status code.
+- Duration.
 - User-Agent.
 - Referer.
-- حجم الاستجابة.
+- Response size.
 
-ويتم تصنيف الطلبات حسب حالة الاستجابة:
+Requests are grouped by response status:
 
-| الحالة      | التصنيف           | المستوى         |
+| Status      | Label             | Level           |
 | ----------- | ----------------- | --------------- |
 | `2xx / 3xx` | ✅ `REQUEST`      | `console.log`   |
 | `4xx`       | ⚠️ `CLIENT ERROR` | `console.warn`  |
@@ -527,93 +547,101 @@ app.set("trust proxy", 1);
 
 ---
 
-# 🧹 سكربتات الصيانة (`scripts/`)
+# 🧹 Maintenance Scripts (`scripts/`)
 
-سكربتات تُشغَّل يدوياً من سطر الأوامر، وتتصل بقاعدة البيانات الموجودة في `MONGO_URI`.
+Scripts you run by hand from the command line. They connect to the database in `MONGO_URI`.
 
-> ⚠️ **مهم — مكان التشغيل:** بعض السكربتات تقرأ `../.env` وبعضها يقرأ `.env` من المجلد الحالي، لذلك مكان تشغيلها مهم:
-> - السكربتات المحددة بـ **(من `scripts/`)** نفّذها بعد `cd scripts`.
-> - السكربتات المحددة بـ **(من `backend/`)** نفّذها من مجلد `backend/`.
+> ⚠️ **Important — where to run:** some scripts read `../.env` and some read `.env` from the current folder, so the folder matters:
+> - Scripts marked **(from `scripts/`)**: run them after `cd scripts`.
+> - Scripts marked **(from `backend/`)**: run them from the `backend/` folder.
 
-| السكربت                       | الوظيفة                                                                                                  | التشغيل                                                  |
-| ----------------------------- | -------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
-| `addAdmin.js`                 | إضافة حساب أدمن يدوياً (راجع الملف لمعرفة طريقة الاستخدام)                                               | —                                                        |
-| `updateAdminsLastActivity.js` | ترحيل: يضيف `lastActivityAt` و`isActive` و`firstName` للأدمنز القدامى الذين لا يملكونها                  | `node updateAdminsLastActivity.js` (من `scripts/`)       |
-| `checkLegacyImageURL.js`      | فحص فقط: يعرض لكل منتج هل ما زال يملك الحقل القديم `imageURL` وعدد الصور في `images`                      | `node checkLegacyImageURL.js` (من `scripts/`)            |
-| `checkBeforeCleanup.js`       | فحص فقط: يتأكد أن كل المنتجات لديها `images` قبل حذف `imageURL` القديم                                    | `node checkBeforeCleanup.js` (من `scripts/`)             |
-| `cleanDatabase.js`            | **يحذف** الحقل القديم `imageURL` من جميع المنتجات                                                         | `node cleanDatabase.js` (من `scripts/`)                  |
-| `scanInvisibleChars.js`       | فحص فقط: يبحث عن محارف Unicode الخفية في `Admin` و`Cart` و`Item` و`Order` ويطبع النتائج                    | `node scripts/scanInvisibleChars.js` (من `backend/`)     |
-| `cleanInvisibleChars.js`      | يزيل محارف Unicode الخفية من نفس الجداول. الوضع الافتراضي **DRY RUN** (عرض فقط بدون تعديل)               | `node scripts/cleanInvisibleChars.js` (من `backend/`)    |
+| Script                        | What it does                                                                                     | Run                                                    |
+| ----------------------------- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------ |
+| `addAdmin.js`                 | Add an admin account by hand (see the file for usage)                                            | —                                                      |
+| `updateAdminsLastActivity.js` | Migration: adds `lastActivityAt`, `isActive`, and `firstName` to old admins that do not have them | `node updateAdminsLastActivity.js` (from `scripts/`)   |
+| `checkLegacyImageURL.js`      | Check only: shows for each product if it still has the old `imageURL` field, and how many `images` | `node checkLegacyImageURL.js` (from `scripts/`)        |
+| `checkBeforeCleanup.js`       | Check only: makes sure all products have `images` before deleting the old `imageURL`             | `node checkBeforeCleanup.js` (from `scripts/`)         |
+| `cleanDatabase.js`            | **Deletes** the old `imageURL` field from all products                                           | `node cleanDatabase.js` (from `scripts/`)              |
+| `scanInvisibleChars.js`       | Check only: finds hidden Unicode characters in `Admin`, `Cart`, `Item`, and `Order`              | `node scripts/scanInvisibleChars.js` (from `backend/`) |
+| `cleanInvisibleChars.js`      | Removes hidden Unicode characters from the same collections. Default mode is **DRY RUN** (show only, no changes) | `node scripts/cleanInvisibleChars.js` (from `backend/`) |
 
-للتنفيذ الفعلي (وليس العرض فقط) لسكربت `cleanInvisibleChars.js`:
+To really run `cleanInvisibleChars.js` (not only show):
 
 ```bash
 DRY_RUN=false node scripts/cleanInvisibleChars.js
 ```
 
-### ترحيل الصور من `imageURL` إلى `images`
+### Image migration from `imageURL` to `images`
 
-كان المنتج يخزّن صورة واحدة في الحقل `imageURL`، ثم تم الانتقال إلى مصفوفة `images`. ترتيب التنظيف الآمن:
+Products used to store one image in `imageURL`, then moved to the `images` array. Safe cleanup order:
 
-1. `checkLegacyImageURL.js` لمعرفة حالة المنتجات.
-2. `checkBeforeCleanup.js` للتأكد أن كل منتج لديه `images`.
-3. `cleanDatabase.js` لحذف `imageURL` القديم، وهذا الأمر **لا يملك وضع DRY RUN ولا يمكن التراجع عنه**، فخذ نسخة احتياطية قبله.
+1. `checkLegacyImageURL.js` to see the products' state.
+2. `checkBeforeCleanup.js` to make sure every product has `images`.
+3. `cleanDatabase.js` to delete the old `imageURL`. This script has **no DRY RUN mode and cannot be undone**, so make a backup first.
 
 ---
 
-# 🩺 حل المشاكل الشائعة
+# 🩺 Troubleshooting
 
 ### `querySrv ECONNREFUSED`
 
-يظهر هذا الخطأ عند الاتصال برابط `mongodb+srv://` عندما لا يستطيع الـ DNS المحلي تحليل سجلات SRV. الحلول:
+This error happens with a `mongodb+srv://` link when the local DNS cannot resolve SRV records. Fixes:
 
-- تغيير DNS الجهاز إلى `8.8.8.8` أو `1.1.1.1`.
-- استخدام رابط الاتصال القديم (غير SRV) من MongoDB Atlas.
-- أو إضافة هذا السطر في بداية ملف التشغيل:
+- Change your computer's DNS to `8.8.8.8` or `1.1.1.1`.
+- Use the old (non-SRV) connection string from MongoDB Atlas.
+- Or add this line at the start of the entry file:
 
 ```javascript
 require("dns").setServers(["8.8.8.8", "1.1.1.1"]);
 ```
 
-> هذا السطر مضاف حالياً في `tests/setup/db.js` فقط (للاختبارات)، وغير مضاف في كود السيرفر نفسه.
+> This line is only in `tests/setup/db.js` now (for tests), not in the server code.
+
+### `MongooseServerSelectionError` (IP not whitelisted)
+
+MongoDB Atlas blocks IPs that are not in its list. Add your IP in Atlas → **Network Access**.
 
 ---
 
-# 📝 ملاحظات معروفة وتحسينات مستقبلية
+# 📝 Known Issues and Future Improvements
 
-هذه بعض الأمور التي أدرك أنها تحتاج إلى تحسين، ولكن تم تأجيلها بسبب ضيق الوقت أو التكلفة.
+These are things I know need work, but I postponed them because of time or cost.
 
-### 📱 التحقق من ملكية رقم الهاتف باستخدام OTP/SMS
+### 📱 Phone ownership check with OTP/SMS
 
-حالياً، أي شخص يعرف رقم هاتف مرتبط بطلبات يمكنه:
+Right now, anyone who knows a phone number with orders can:
 
-- استخراج Guest Token عبر `/api/guest/verify`.
-- الاستعلام عن الطلبات مباشرة عبر `/api/order/get-my-orders`.
+- Get a guest token with `/api/guest/verify`.
+- Get the orders directly with `/api/order/get-my-orders`.
 
-السبب هو عدم وجود خطوة للتحقق من ملكية الرقم.
+This is because there is no step to check who owns the number.
 
-**الحل المستقبلي:** إضافة نظام OTP يتم إرسال الرمز فيه إلى رقم الهاتف قبل إصدار الـ Guest Token أو السماح بالوصول إلى الطلبات.
+**Future fix:** an OTP system that sends a code to the phone before giving a guest token or showing orders.
+
+### 🔁 More RESTful routes
+
+The auth, admins, dashboard, items, cart, and admin orders routes are now RESTful. The customer order routes (`/direct-purchase/set-data`, `/cart-purchase/set-data/:guestId`, `/order/get-my-orders`) still use the old style (verbs in the URL) and will be moved later.
 
 ### 🌐 CORS
 
-إعداد CORS مفتوح حالياً لجميع الـ origins (`app.use(cors())`).
+CORS is open to all origins now (`app.use(cors())`).
 
-في بيئة الإنتاج، يفضّل تقييده إلى دومين الـ Frontend فقط.
+In production, it is better to allow only the frontend domain.
 
-### 🔑 التحقق من متغيرات البيئة
+### 🔑 Environment variable check
 
-لا يوجد حالياً فحص صريح لمتغيرات البيئة المطلوبة عند تشغيل السيرفر، مثل:
+There is no clear check for required environment variables at startup, like:
 
 ```text
 MONGO_URI
 JWT_SECRET
 ```
 
-حالياً يتوقف السيرفر فقط إذا فشل الاتصال بقاعدة البيانات. يمكن تحسين ذلك من خلال التحقق من المتغيرات عند startup وإيقاف السيرفر برسالة واضحة في حال كانت مفقودة.
+Now the server stops only if the database connection fails. A better way is to check the variables at startup and stop with a clear message if one is missing.
 
-### 📨 توحيد شكل رسائل الأخطاء
+### 📨 One error message format
 
-هناك عدم اتساق في بعض الـ endpoints بين استخدام:
+Some endpoints use:
 
 ```json
 {
@@ -621,7 +649,7 @@ JWT_SECRET
 }
 ```
 
-و:
+and others use:
 
 ```json
 {
@@ -629,32 +657,30 @@ JWT_SECRET
 }
 ```
 
-يفضّل توحيد شكل جميع API responses.
+It is better to use one format for all API responses.
 
-### 🚧 404 Handler عام
+### 🚧 Global 404 handler
 
-لا يوجد حالياً Middleware عام للمسارات غير الموجودة، وهو من التحسينات المخطط لها مستقبلاً.
+There is no global middleware for routes that do not exist yet. It is planned.
 
 ---
 
-# 🌐 الاستضافة
+# 🌐 Hosting
 
-المشروع يستخدم الخدمات التالية:
-
-| الجزء        | الخدمة        |
+| Part         | Service       |
 | ------------ | ------------- |
 | **Frontend** | Vercel        |
 | **Backend**  | Render        |
 | **Database** | MongoDB Atlas |
 
-> المشروع مستضاف على خطة مجانية، لذلك تم الاعتماد على `localhost` أثناء العرض المباشر لتجنب تأخير الاستيقاظ الأولي للسيرفر (**Cold Start**).
+> The project uses free plans, so I used `localhost` during live demos to avoid the slow first start of the server (**cold start**).
 
 ---
 
-## 🚀 المشروع
+## 🚀 About the Project
 
-هذا المشروع كان تجربة عملية لبناء Backend حقيقي باستخدام:
+This project was hands-on practice for building a real backend with:
 
 **Express.js + MongoDB + Authentication + Authorization + Cart + Orders + Guest Sessions + Security + Testing**
 
-وركّزت فيه بشكل خاص على التعامل مع الحالات الواقعية، مثل تعارضات المخزون، صلاحيات المستخدمين، التحقق من المدخلات، وحماية الـ API من إساءة الاستخدام.
+I focused on real-world cases, like stock conflicts, user roles, input validation, and protecting the API from abuse.

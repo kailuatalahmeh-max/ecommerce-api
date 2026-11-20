@@ -5,44 +5,51 @@ const { createLimiter } = require("../middlewares/rateLimiter");
 const { validateGuestId } = require("../middlewares/validateGuestId");
 const { validateObjectId } = require("../middlewares/validateObjectId");
 
-router.post(
-  "/add/:guestId",
-  createLimiter(500),
-  validateGuestId,
-  cartController.addToCart,
-);
+// Mounted at /api/carts
+
 router.get(
   "/:guestId",
   createLimiter(50),
   validateGuestId,
   cartController.getCart,
 );
+
+router.post(
+  "/:guestId/items",
+  createLimiter(500),
+  validateGuestId,
+  cartController.addToCart,
+);
+
 router.delete(
-  "/delete/:guestId/:id",
+  "/:guestId/items",
+  createLimiter(100),
+  validateGuestId,
+  cartController.deleteAllCart,
+);
+
+router.delete(
+  "/:guestId/items/:id",
   createLimiter(50),
   validateGuestId,
   validateObjectId("id"),
   cartController.deleteCartItem,
 );
+
 router.patch(
-  "/add-quantity/:guestId/:id",
+  "/:guestId/items/:id/increase",
   createLimiter(50),
   validateGuestId,
   validateObjectId("id"),
   cartController.increaseQuantity,
 );
+
 router.patch(
-  "/reducing-quantity/:guestId/:id",
+  "/:guestId/items/:id/decrease",
   createLimiter(50),
   validateGuestId,
   validateObjectId("id"),
   cartController.reduceQuantity,
-);
-router.delete(
-  "/delete-all/:guestId",
-  createLimiter(100),
-  validateGuestId,
-  cartController.deleteAllCart,
 );
 
 module.exports = router;

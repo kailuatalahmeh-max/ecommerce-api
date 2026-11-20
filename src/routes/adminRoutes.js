@@ -6,34 +6,26 @@ const { createLimiter } = require("../middlewares/rateLimiter");
 const { requireRole } = require("../middlewares/requireRole");
 const { validateObjectId } = require("../middlewares/validateObjectId");
 
+// Mounted at /api/admins
+
 router.post(
-  "/create-new-admin",
+  "/",
   createLimiter(5),
   verifyToken,
   requireRole("super_admin"),
   adminController.createAdmin,
 );
 
-router.post("/logIn", createLimiter(10), adminController.loginAdmin);
-
 router.get(
-  "/analytics",
-  createLimiter(50),
-  verifyToken,
-  requireRole("super_admin"),
-  adminController.getAnalytics,
-);
-
-router.get(
-  "/get-admins",
+  "/",
   createLimiter(200),
   verifyToken,
   requireRole("super_admin"),
   adminController.getAdminsData,
 );
 
-router.put(
-  "/disable-admin/:adminId",
+router.patch(
+  "/:adminId/disable",
   createLimiter(10),
   verifyToken,
   requireRole("super_admin"),
@@ -41,8 +33,8 @@ router.put(
   adminController.disableAdmin,
 );
 
-router.put(
-  "/enable-admin/:adminId",
+router.patch(
+  "/:adminId/enable",
   createLimiter(10),
   verifyToken,
   requireRole("super_admin"),

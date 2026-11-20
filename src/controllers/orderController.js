@@ -228,7 +228,8 @@ exports.updateOrderStatus = async (req, res, next) => {
   try {
     const allowedStatuses = ["Pending", "Accepted", "Delivered", "Cancelled"];
 
-    const { orderId, status } = req.body;
+    const { orderId } = req.params;
+    const { status } = req.body;
 
     if (!orderId || !status) {
       return res.status(400).json({

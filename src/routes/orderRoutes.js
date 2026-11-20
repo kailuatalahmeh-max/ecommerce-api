@@ -28,14 +28,14 @@ router.get(
   orderController.getMyOrders,
 );
 router.get(
-  "/admin-control/orders",
+  "/orders",
   createLimiter(300),
   verifyToken,
   requireRole("moderator", "super_admin"),
   orderController.getAllOrdersForAdmin,
 );
 router.patch(
-  "/admin-control/order-edit-status",
+  "/orders/:orderId",
   createLimiter(300),
   verifyToken,
   requireRole("moderator", "super_admin"),

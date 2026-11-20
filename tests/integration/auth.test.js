@@ -22,8 +22,8 @@ afterAll(async () => {
 });
 
 describe("حماية endpoints الأدمن", () => {
-  it("POST /api/addItem بدون token لازم يرجّع 401", async () => {
-    const res = await request(app).post("/api/addItem").send({
+  it("POST /api/items بدون token لازم يرجّع 401", async () => {
+    const res = await request(app).post("/api/items").send({
       itemName: "منتج تجريبي",
       itemPrice: 50,
       itemQuantity: 10,
@@ -34,7 +34,7 @@ describe("حماية endpoints الأدمن", () => {
 
   it("token مزيّف لازم يرجّع 401", async () => {
     const res = await request(app)
-      .post("/api/addItem")
+      .post("/api/items")
       .set("Authorization", "Bearer this.is.fake")
       .send({});
     expect(res.statusCode).toBe(401);
@@ -46,7 +46,7 @@ describe("حماية endpoints الأدمن", () => {
       process.env.JWT_SECRET,
     );
     const res = await request(app)
-      .delete("/api/deleteItem/507f1f77bcf86cd799439011")
+      .delete("/api/items/507f1f77bcf86cd799439011")
       .set("Authorization", `Bearer ${ghostToken}`);
     expect(res.statusCode).toBe(401);
   });

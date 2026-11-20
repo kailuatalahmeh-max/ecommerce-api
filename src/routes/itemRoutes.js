@@ -7,24 +7,21 @@ const { requireRole } = require("../middlewares/requireRole");
 const { validateItemInput } = require("../middlewares/validateItemInput");
 const { validateObjectId } = require("../middlewares/validateObjectId");
 
+// Mounted at /api/items
+
+router.get("/", createLimiter(300), itemController.getItemsData);
+
 router.post(
-  "/addItem",
+  "/",
   addLimiter,
   verifyToken,
   requireRole("admin", "moderator", "super_admin"),
   validateItemInput,
   itemController.addItem,
 );
-router.delete(
-  "/deleteItem/:id",
-  createLimiter(300),
-  verifyToken,
-  requireRole("admin", "moderator", "super_admin"),
-  validateObjectId("id"),
-  itemController.deleteItem,
-);
+
 router.put(
-  "/item/edit/:id",
+  "/:id",
   createLimiter(50),
   verifyToken,
   requireRole("admin", "moderator", "super_admin"),
@@ -33,5 +30,13 @@ router.put(
   itemController.editItem,
 );
 
-router.get("/getItemsData", createLimiter(300), itemController.getItemsData);
+router.delete(
+  "/:id",
+  createLimiter(300),
+  verifyToken,
+  requireRole("admin", "moderator", "super_admin"),
+  validateObjectId("id"),
+  itemController.deleteItem,
+);
+
 module.exports = router;

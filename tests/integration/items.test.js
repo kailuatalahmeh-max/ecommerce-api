@@ -32,7 +32,7 @@ const invalidToken = jwt.sign(
 
 describe("Testing item endpoints", () => {
   it("getItemsData should return 200 and an array of items", async () => {
-    const res = await request(app).get("/api/getItemsData");
+    const res = await request(app).get("/api/items");
     expect(res.statusCode).toBe(200);
     expect(Array.isArray(res.body.itemsData)).toBe(true);
   });
@@ -40,7 +40,7 @@ describe("Testing item endpoints", () => {
   it("enabled admin can add items", async () => {
     const { token } = await createTestAdmin("super_admin");
     const res = await request(app)
-      .post("/api/addItem")
+      .post("/api/items")
       .set("Authorization", `Bearer ${token}`)
       .send(validItemData);
     expect(res.statusCode).toBe(201);
@@ -55,7 +55,7 @@ describe("Testing item endpoints", () => {
     const createItem = await Item.create(validItemData);
 
     const res = await request(app)
-      .put(`/api/item/edit/${createItem._id}`)
+      .put(`/api/items/${createItem._id}`)
       .set("Authorization", `Bearer ${token}`)
       .send(validEditedItemData);
 
@@ -72,7 +72,7 @@ describe("Sending a request via a disabled admin account", () => {
     await disableAdmin(admin._id);
 
     const res = await request(app)
-      .post("/api/addItem")
+      .post("/api/items")
       .set("Authorization", `Bearer ${token}`)
       .send(validItemData);
     expect(res.statusCode).toBe(401);
@@ -83,7 +83,7 @@ describe("Sending a request via a disabled admin account", () => {
 
 describe("Rejecting requests with missing or invalid tokens", () => {
   it("should return 401 for addItem without token", async () => {
-    const res = await request(app).post("/api/addItem").send(validItemData);
+    const res = await request(app).post("/api/items").send(validItemData);
     expect(res.statusCode).toBe(401);
     expect(res.body.success).toBe(false);
     expect(await Item.countDocuments()).toBe(0);
@@ -91,7 +91,7 @@ describe("Rejecting requests with missing or invalid tokens", () => {
 
   it("should return 401 for addItem with invalid token", async () => {
     const res = await request(app)
-      .post("/api/addItem")
+      .post("/api/items")
       .set("Authorization", `Bearer ${invalidToken}`)
       .send(validItemData);
     expect(res.statusCode).toBe(401);
@@ -105,7 +105,7 @@ describe("Rejecting invalid item data", () => {
     const { token } = await createTestAdmin("super_admin");
 
     const res = await request(app)
-      .post("/api/addItem")
+      .post("/api/items")
       .set("Authorization", `Bearer ${token}`)
       .send(invalidItemDataNegativePrice);
 
@@ -118,7 +118,7 @@ describe("Rejecting invalid item data", () => {
     const { token } = await createTestAdmin("super_admin");
 
     const res = await request(app)
-      .post("/api/addItem")
+      .post("/api/items")
       .set("Authorization", `Bearer ${token}`)
       .send(invalidItemDataJavaScriptImageURL);
 
@@ -133,7 +133,7 @@ describe("Testing item operations with invalid or non-existent IDs", () => {
     const { token } = await createTestAdmin("admin");
 
     const res = await request(app)
-      .put("/api/item/edit/invalidID")
+      .put("/api/items/invalidID")
       .set("Authorization", `Bearer ${token}`)
       .send(validEditedItemData);
 
@@ -145,7 +145,7 @@ describe("Testing item operations with invalid or non-existent IDs", () => {
     const { token } = await createTestAdmin("admin");
 
     const res = await request(app)
-      .put("/api/item/edit/6a780926966bdf371b4d67bf")
+      .put("/api/items/6a780926966bdf371b4d67bf")
       .set("Authorization", `Bearer ${token}`)
       .send(validEditedItemData);
 
@@ -157,7 +157,7 @@ describe("Testing item operations with invalid or non-existent IDs", () => {
     const { token } = await createTestAdmin("admin");
 
     const res = await request(app)
-      .delete("/api/deleteItem/invalidID")
+      .delete("/api/items/invalidID")
       .set("Authorization", `Bearer ${token}`);
 
     expect(res.body.success).toBe(false);
@@ -168,7 +168,7 @@ describe("Testing item operations with invalid or non-existent IDs", () => {
     const { token } = await createTestAdmin("admin");
 
     const res = await request(app)
-      .delete("/api/deleteItem/6a7c71a6fb399bd981b090cb")
+      .delete("/api/items/6a7c71a6fb399bd981b090cb")
       .set("Authorization", `Bearer ${token}`);
 
     expect(res.body.success).toBe(false);
