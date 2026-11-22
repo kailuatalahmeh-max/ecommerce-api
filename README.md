@@ -494,7 +494,7 @@ The response (`data`) includes:
 | `topRegions`     | 📍 Top 5 regions by number of orders                       | Last 7 days  |
 | `totalItems`     | Number of products                                        | All time     |
 | `activeCarts`    | Number of carts in the database                           | All time     |
-| `lowStockItems`  | ⚠️ Products with quantity less than **5**                  | Now          |
+| `lowStockItems`  | ⚠️ Products with quantity **5 or less**                    | Now          |
 
 ---
 

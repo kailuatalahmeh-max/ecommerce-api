@@ -203,7 +203,7 @@ exports.getAnalytics = async (req, res, next) => {
     const activeCarts = await Cart.countDocuments();
 
     const lowStockItems = await Item.find({
-      itemQuantity: { $lt: 5 },
+      itemQuantity: { $lte: 5 },
     }).select("itemName itemQuantity");
 
     res.json({
@@ -296,7 +296,6 @@ exports.enableAdmin = async (req, res, next) => {
         message: "الادمن غير موجود",
       });
     }
-
 
     admin.isActive = true;
     await admin.save();
