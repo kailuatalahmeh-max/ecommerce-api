@@ -41,14 +41,15 @@ A backend for an online store, built with **Express.js** and **MongoDB**. It sup
 backend/
 ├── myApp.js              # Express app (middlewares and routes) — imported by the tests
 ├── server.js             # Entry point: connects to the database, then starts the server
-├── scripts/              # Maintenance and data migration scripts (run by hand)
+├── backups/              # JSON backups made by seedPhoneShop.js (ignored by git)
+├── scripts/              # Maintenance, data migration and seed scripts (run by hand)
 ├── src/
 │   ├── config/           # Database connection
 │   ├── controllers/      # Business logic
 │   ├── middlewares/      # Auth, roles, validation, rate limiting, error handling
-│   ├── models/           # Admin, Cart, GuestSession, Item, Order
+│   ├── models/           # Admin, Cart, GuestSession, Item, Order, OtpCode
 │   ├── routes/           # Route definitions
-│   └── utils/            # Shared constants
+│   └── utils/            # Shared constants (constants.js), phone number cleaning (phone.js)
 └── tests/
     ├── setup/            # Test database connection
     ├── fixtures/         # Ready-made test data
@@ -103,6 +104,7 @@ FRONTEND_URL=http://localhost:5173
 | `JWT_SECRET`   | Yes      | Secret key for signing admin tokens                       |
 | `FRONTEND_URL` | Yes      | The only origin allowed by CORS (your frontend address)   |
 | `PORT`         | No       | Default `5000`                                            |
+| `MONGO_URI2`   | No       | Only for `scripts/seedPhoneShop.js` (the database it fills with demo products). The server does not use it |
 
 When the server starts (`server.js`), it checks `MONGO_URI`, `JWT_SECRET`, and `FRONTEND_URL`. If one is missing, it prints `Missing environment variables: ...` and stops.
 
@@ -284,6 +286,19 @@ A guest session lets the user track orders without sending the phone number in e
 | `phoneNumber` | `String` | Phone number linked to the session                                          |
 | `token`       | `String` | Unique random token from `crypto.randomBytes` (32 bytes, `hex` format)      |
 | `createdAt`   | `Date`   | The session is deleted automatically after **30 days** (TTL index)          |
+
+---
+
+## 🔢 OtpCode
+
+> 🚧 **Not used yet.** This model is the first step of the OTP feature (see [Known Issues](#-phone-ownership-check-with-otpsms)). No route or controller uses it yet.
+
+| Field         | Type     | Notes                                                                 |
+| ------------- | -------- | --------------------------------------------------------------------- |
+| `phoneNumber` | `String` | Required, unique (one active code per number)                         |
+| `codeHash`    | `String` | Required. The hashed code (the plain code is never saved)             |
+| `attempts`    | `Number` | Wrong tries so far. Default `0`                                        |
+| `expiresAt`   | `Date`   | Required. The code is deleted automatically at this time (TTL index)  |
 
 ---
 
@@ -657,6 +672,22 @@ To really run `cleanInvisibleChars.js` (not only show):
 DRY_RUN=false node scripts/cleanInvisibleChars.js
 ```
 
+### 📱 Demo data: `seedPhoneShop.js`
+
+Fills the database in **`MONGO_URI2`** (not `MONGO_URI`) with **22 demo products** for the "Talahmeh Phones" store: phones, earbuds, chargers, watches and a tablet. The products are not real. Some quantities are set on purpose to show the stock badges (`0` = out of stock, `2`–`4` = few left). Run it from `backend/`:
+
+```bash
+node scripts/seedPhoneShop.js --dry-run            # show only, change nothing
+node scripts/seedPhoneShop.js                      # add the products that do not exist yet (by name)
+node scripts/seedPhoneShop.js --dry-run --replace  # show what --replace would do
+node scripts/seedPhoneShop.js --replace            # backup → delete ALL items → add the 22 products
+```
+
+- `--replace` deletes **only the `items` collection**. Orders, carts, guest sessions and admins are not touched.
+- Before deleting, it saves all current items to `backend/backups/items-<db>-<date>.json` and checks the file. The `backups/` folder is in `.gitignore`.
+- Old orders keep the item name and price inside them, so they still show correctly. Old carts may point to deleted items until they expire (7 days).
+- Before writing, it checks the same limits as the API (name length, price, quantity, 1–6 images).
+
 ### Image migration from `imageURL` to `images`
 
 Products used to store one image in `imageURL`, then moved to the `images` array. Safe cleanup order:
@@ -700,6 +731,8 @@ Right now, anyone who knows a phone number with orders can get a guest token wit
 This is because there is no step to check who owns the number.
 
 **Future fix:** an OTP system that sends a code to the phone before giving a guest token or showing orders.
+
+**Status:** started. The [`OtpCode`](#-otpcode) model exists, but sending the SMS and checking the code are not built yet.
 
 ### 📨 One error message format
 
