@@ -8,6 +8,7 @@ const {
 const { addLimiter, createLimiter } = require("../middlewares/rateLimiter");
 const { validateGuestId } = require("../middlewares/validateGuestId");
 const { validateObjectId } = require("../middlewares/validateObjectId");
+const { requireStoreWhatsApp } = require("../middlewares/requireStoreWhatsApp");
 
 // Mounted at /api/carts
 
@@ -62,6 +63,7 @@ router.post(
   addLimiter,
   validateGuestId,
   validatePurchaseDetails,
+  requireStoreWhatsApp,
   orderController.cartPurchase,
 );
 

@@ -7,6 +7,8 @@ const {
 const { verifyToken } = require("../middlewares/authMiddleware");
 const { createLimiter } = require("../middlewares/rateLimiter");
 const { requireRole } = require("../middlewares/requireRole");
+const { validateObjectId } = require("../middlewares/validateObjectId");
+const { requireStoreWhatsApp } = require("../middlewares/requireStoreWhatsApp");
 
 // Mounted at /api/orders
 
@@ -15,6 +17,7 @@ router.post(
   "/",
   createLimiter(300),
   validatePurchaseDetails,
+  requireStoreWhatsApp,
   orderController.directPurchase,
 );
 
@@ -29,9 +32,14 @@ router.get(
 router.patch(
   "/:orderId",
   createLimiter(300),
+  validateObjectId("orderId"),
   verifyToken,
   requireRole("moderator", "super_admin"),
   orderController.updateOrderStatus,
 );
 
+
+
+
 module.exports = router;
+ 

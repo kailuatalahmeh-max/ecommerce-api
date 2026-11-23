@@ -4,6 +4,10 @@ const GuestSession = require("../models/GuestSession");
 const Order = require("../models/Order");
 const Item = require("../models/Item");
 const Cart = require("../models/Cart");
+const {
+  createConfirmation,
+  buildWhatsAppUrl,
+} = require("../services/orderConfirmation.service");
 const { normalizePhone } = require("../utils/phone");
 
 exports.directPurchase = async (req, res, next) => {
@@ -28,7 +32,7 @@ exports.directPurchase = async (req, res, next) => {
       });
     }
 
-    const itemQuantityUpdated = await Item.findOneAndUpdate(
+    const updatedItem = await Item.findOneAndUpdate(
       {
         _id: itemId,
         itemQuantity: { $gte: quantity },
@@ -39,7 +43,7 @@ exports.directPurchase = async (req, res, next) => {
       { returnDocument: "after" },
     );
 
-    if (!itemQuantityUpdated) {
+    if (!updatedItem) {
       const itemExists = await Item.exists({ _id: itemId });
       if (!itemExists) {
         return res.status(404).json({
@@ -54,31 +58,35 @@ exports.directPurchase = async (req, res, next) => {
       });
     }
 
-    const totalPrice = quantity * itemQuantityUpdated.itemPrice;
+    const totalPrice = quantity * updatedItem.itemPrice;
 
-    const order = [
+    const orderItems = [
       {
-        itemName: itemQuantityUpdated.itemName,
-        itemPrice: itemQuantityUpdated.itemPrice,
+        itemName: updatedItem.itemName,
+        itemPrice: updatedItem.itemPrice,
         quantity: quantity,
-        itemId: itemQuantityUpdated._id,
+        itemId: updatedItem._id,
       },
     ];
-
-    const orderCreated = await Order.create({
+    const confirmation = createConfirmation();
+    const newOrder = await Order.create({
       customerName: fullName,
       phoneNumber: `${countryCode}${phoneNumber}`,
       region: region,
-      items: order,
+      items: orderItems,
       totalPrice: totalPrice,
+      confirmation: confirmation,
     });
 
     return res.status(201).json({
       success: true,
-      message: "تم الشراء بنجاح! يمكن متابعة الطلب من صفحة طلباتي",
+      message: "تم إنشاء الطلب! أكّد طلبك عبر واتساب",
       data: {
-        orderId: orderCreated._id,
-        updatedItem: itemQuantityUpdated,
+        orderId: newOrder._id,
+        updatedItem: updatedItem,
+        confirmCode: confirmation.code,
+        expiresAt: confirmation.expiresAt,
+        whatsappUrl: buildWhatsAppUrl(req.storeWhatsApp, confirmation.code),
       },
     });
   } catch (error) {
@@ -163,13 +171,22 @@ exports.cartPurchase = async (req, res, next) => {
 
       stockUpdates.push({ itemId: item.itemId._id, quantity: item.quantity });
     }
-    await Order.create(order);
-
+    order.confirmation = createConfirmation();
+    const orderCreated = await Order.create(order);
     await Cart.findOneAndUpdate({ guestId }, { $set: { items: [] } });
 
     res.status(201).json({
       success: true,
-      message: "تم الشراء! العناصر موجودة في صفحة طلباتي",
+      message: "تم إنشاء الطلب! أكّد طلبك عبر واتساب",
+      data: {
+        orderId: orderCreated._id,
+        confirmCode: order.confirmation.code,
+        expiresAt: order.confirmation.expiresAt,
+        whatsappUrl: buildWhatsAppUrl(
+          req.storeWhatsApp,
+          order.confirmation.code,
+        ),
+      },
     });
   } catch (error) {
     next(error);

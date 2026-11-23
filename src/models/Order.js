@@ -1,5 +1,21 @@
 const mongoose = require("mongoose");
 
+const ConfirmationSchema = new mongoose.Schema(
+  {
+    code: { type: String, required: true },
+    status: {
+      type: String,
+      required: true,
+      default: "pending",
+      enum: ["pending", "confirmed", "expired"],
+    },
+    expiresAt: { type: Date, required: true },
+    confirmedAt: { type: Date },
+    method: { type: String, enum: ["whatsapp_bot", "admin"] },
+  },
+  { _id: false },
+);
+
 const OrderSchema = new mongoose.Schema(
   {
     customerName: { type: String, required: true },
@@ -23,10 +39,15 @@ const OrderSchema = new mongoose.Schema(
       default: "Pending",
       enum: ["Pending", "Accepted", "Delivered", "Cancelled"],
     },
+    confirmation: { type: ConfirmationSchema },
   },
   { timestamps: true },
 );
 
 OrderSchema.index({ phoneNumber: 1, createdAt: -1 });
+
+OrderSchema.index({ "confirmation.code": 1 }, { unique: true, sparse: true });
+
+OrderSchema.index({ "confirmation.status": 1, "confirmation.expiresAt": 1 });
 
 module.exports = mongoose.model("Order", OrderSchema);
