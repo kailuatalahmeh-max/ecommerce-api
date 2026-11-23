@@ -11,7 +11,7 @@ const ConfirmationSchema = new mongoose.Schema(
     },
     expiresAt: { type: Date, required: true },
     confirmedAt: { type: Date },
-    method: { type: String, enum: ["whatsapp_bot", "admin"] },
+    method: { type: String, enum: ["whatsapp_bot", "manual"] },
   },
   { _id: false },
 );

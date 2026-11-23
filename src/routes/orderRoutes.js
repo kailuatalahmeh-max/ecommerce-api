@@ -38,8 +38,21 @@ router.patch(
   orderController.updateOrderStatus,
 );
 
+// حالة تأكيد الطلب (الفرونت يسأل عنها بعد الرجوع من واتساب)
+router.get(
+  "/:id/confirmation",
+  createLimiter(300),
+  validateObjectId("id"),
+  orderController.getOrderConfirmation,
+);
 
-
+// الأدمن: تأكيد الطلب يدوياً بالرمز ورقم المرسل
+router.post(
+  "/confirm",
+  createLimiter(100),
+  verifyToken,
+  requireRole("moderator", "super_admin"),
+  orderController.confirmOrderManually,
+);
 
 module.exports = router;
- 

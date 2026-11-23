@@ -3,6 +3,9 @@ const { COUNTRY_CODES } = require("./constants");
 // حذف المسافات والشرطات والأقواس والنقاط
 const PHONE_SEPARATORS_REGEX = /[\s\-().]/g;
 
+// المقدمات اللي بتوصل لنفس الرقم
+const EQUIVALENT_CODES = ["+970", "+972"];
+
 /*
   دالة التنظيف المشتركة (للشراء ولصفحة "طلباتي"):
   تنظّف الجزء المحلي من الرقم (بدون كود الدولة).
@@ -56,4 +59,29 @@ function normalizePhone(input) {
   return `${country.value}${local}`;
 }
 
-module.exports = { cleanLocalPhone, isValidLocalPhone, normalizePhone };
+/*
+  هل الرقمين نفس الرقم؟
+  +970 و +972 يعتبروا نفس المقدمة.
+    "+970599123456" و "+972 0599-123-456" ← true
+  يرجع false إذا أي رقم غير صحيح.
+*/
+function isSamePhone(a, b) {
+  const na = normalizePhone(a);
+  const nb = normalizePhone(b);
+  if (!na || !nb) return false;
+  if (na === nb) return true;
+
+  const codeA = na.slice(0, -9);
+  const codeB = nb.slice(0, -9);
+  const bothEquivalent =
+    EQUIVALENT_CODES.includes(codeA) && EQUIVALENT_CODES.includes(codeB);
+
+  return bothEquivalent && na.slice(-9) === nb.slice(-9);
+}
+
+module.exports = {
+  cleanLocalPhone,
+  isValidLocalPhone,
+  normalizePhone,
+  isSamePhone,
+};

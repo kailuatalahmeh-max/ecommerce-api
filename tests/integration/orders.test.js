@@ -5,6 +5,8 @@ const { connectTestDB, disconnectTestDB } = require("../setup/db");
 
 const Item = require("../../src/models/Item");
 const Order = require("../../src/models/Order");
+const StoreSettings = require("../../src/models/StoreSettings");
+const { createTestAdmin } = require("../helpers/createTestAdmin");
 
 const URL = "/api/orders";
 
@@ -14,9 +16,17 @@ const { createTestOrder } = require("../fixtures/orderData");
 beforeAll(connectTestDB);
 afterAll(disconnectTestDB);
 
+const STORE_WHATSAPP = "+970599000000";
+
 beforeEach(async () => {
   await Item.deleteMany({});
   await Order.deleteMany({});
+  // الشراء يحتاج رقم واتساب المتجر (requireStoreWhatsApp)
+  await StoreSettings.findOneAndUpdate(
+    { key: "main" },
+    { $set: { whatsappNumber: STORE_WHATSAPP } },
+    { upsert: true },
+  );
 });
 
 describe("Direct Purchase Testing", () => {
@@ -133,5 +143,101 @@ describe("Direct Purchase Testing", () => {
 
     const itemInDb = await Item.findById(testItem._id).lean();
     expect(itemInDb.itemQuantity).toBe(0);
+  });
+});
+
+describe("WhatsApp order confirmation", () => {
+  const buyOne = async () => {
+    const { testItem } = await addTestItem();
+    return request(app).post(URL).send(createTestOrder(testItem._id));
+  };
+
+  it("purchase returns a confirm code and a WhatsApp link", async () => {
+    const res = await buyOne();
+
+    expect(res.status).toBe(201);
+    const { orderId, confirmCode, whatsappUrl, expiresAt } = res.body.data;
+
+    expect(confirmCode).toMatch(/^[A-Z2-9]{6}$/);
+    expect(new Date(expiresAt).getTime()).toBeGreaterThan(Date.now());
+    expect(whatsappUrl).toContain("https://wa.me/970599000000?text=");
+    expect(decodeURIComponent(whatsappUrl)).toContain(confirmCode);
+
+    const saved = await Order.findById(orderId).lean();
+    expect(saved.confirmation.code).toBe(confirmCode);
+    expect(saved.confirmation.status).toBe("pending");
+  });
+
+  it("purchase is blocked (503) when the store has no WhatsApp number", async () => {
+    await StoreSettings.deleteMany({});
+
+    const res = await buyOne();
+
+    expect(res.status).toBe(503);
+    expect(res.body.success).toBe(false);
+    expect(await Order.countDocuments()).toBe(0);
+  });
+
+  it("GET /:id/confirmation shows pending, then expired after the time ends", async () => {
+    const { orderId } = (await buyOne()).body.data;
+
+    let res = await request(app).get(`${URL}/${orderId}/confirmation`);
+    expect(res.status).toBe(200);
+    expect(res.body.data.status).toBe("pending");
+
+    await Order.updateOne(
+      { _id: orderId },
+      { $set: { "confirmation.expiresAt": new Date(Date.now() - 1000) } },
+    );
+
+    res = await request(app).get(`${URL}/${orderId}/confirmation`);
+    expect(res.body.data.status).toBe("expired");
+  });
+
+  it("moderator confirms the order manually, only once", async () => {
+    const { orderId, confirmCode } = (await buyOne()).body.data;
+    const { token } = await createTestAdmin("moderator");
+
+    const confirm = () =>
+      request(app)
+        .post(`${URL}/confirm`)
+        .set("Authorization", `Bearer ${token}`)
+        .send({ code: confirmCode, senderPhone: "+970599123456" });
+
+    const first = await confirm();
+    expect(first.status).toBe(200);
+    expect(first.body.success).toBe(true);
+
+    const saved = await Order.findById(orderId).lean();
+    expect(saved.confirmation.status).toBe("confirmed");
+
+    const second = await confirm();
+    expect(second.status).toBe(409);
+    expect(second.body.code).toBe("ALREADY_CONFIRMED");
+  });
+
+  it("manual confirm is rejected when the phone does not match", async () => {
+    const { confirmCode } = (await buyOne()).body.data;
+    const { token } = await createTestAdmin("moderator");
+
+    const res = await request(app)
+      .post(`${URL}/confirm`)
+      .set("Authorization", `Bearer ${token}`)
+      .send({ code: confirmCode, senderPhone: "+970591111111" });
+
+    expect(res.status).toBe(400);
+    expect(res.body.code).toBe("PHONE_MISMATCH");
+  });
+
+  it("manual confirm needs a moderator or super_admin", async () => {
+    const { confirmCode } = (await buyOne()).body.data;
+    const { token } = await createTestAdmin("admin");
+
+    const res = await request(app)
+      .post(`${URL}/confirm`)
+      .set("Authorization", `Bearer ${token}`)
+      .send({ code: confirmCode, senderPhone: "+970599123456" });
+
+    expect(res.status).toBe(403);
   });
 });

@@ -7,6 +7,7 @@ A backend for an online store, built with **Express.js** and **MongoDB**. It sup
 - Product management, with many images per product.
 - A shopping cart without login, using a `Guest ID`.
 - Creating and managing orders.
+- Order confirmation on WhatsApp with a one-time code (confirmed by hand for now).
 - Order tracking with a guest session (`Guest Token`).
 - An admin dashboard with multi-level roles, and enabling/disabling admin accounts.
 - API abuse protection and input validation.
@@ -46,9 +47,10 @@ backend/
 ├── src/
 │   ├── config/           # Database connection
 │   ├── controllers/      # Business logic
-│   ├── middlewares/      # Auth, roles, validation, rate limiting, error handling
-│   ├── models/           # Admin, Cart, GuestSession, Item, Order, OtpCode
+│   ├── middlewares/      # Auth, roles, validation, rate limiting, error handling, store WhatsApp check
+│   ├── models/           # Admin, Cart, GuestSession, Item, Order, OtpCode, StoreSettings
 │   ├── routes/           # Route definitions
+│   ├── services/         # orderConfirmation.service.js (WhatsApp confirm code)
 │   └── utils/            # Shared constants (constants.js), phone number cleaning (phone.js)
 └── tests/
     ├── setup/            # Test database connection
@@ -168,7 +170,7 @@ JWT_SECRET=any_test_secret
 | File                    | What it tests                                                                                                   |
 | ----------------------- | --------------------------------------------------------------------------------------------------------------- |
 | `items.test.js`         | Get products, add and edit by an admin, reject missing or invalid tokens, reject disabled admins, reject invalid data (negative price, `javascript:` links), invalid or missing IDs |
-| `orders.test.js`        | Direct purchase: success updates stock and total; rejects invalid ID, invalid quantity, quantity bigger than stock, missing product. **Stock conflict:** two requests at the same time for stock that is enough for only one → one `201`, one `400`, and only `1` order saved |
+| `orders.test.js`        | Direct purchase: success updates stock and total; rejects invalid ID, invalid quantity, quantity bigger than stock, missing product. **Stock conflict:** two requests at the same time for stock that is enough for only one → one `201`, one `400`, and only `1` order saved. **WhatsApp confirm:** purchase returns a code and a `wa.me` link; `503` with no store number; status `pending` → `expired`; a moderator confirms only once (`409` the second time); wrong phone → `PHONE_MISMATCH`; role `admin` → `403` |
 | `auth.test.js`          | Admin routes return `401` with no token, a fake token, or a valid token for an admin that does not exist        |
 | `health.test.js`        | `GET /health` returns `200`                                                                                     |
 | `cart.test.js`          | ⚠️ Empty for now (no tests yet)                                                                                  |
@@ -272,8 +274,33 @@ The cart is deleted automatically **7 days** after its last update (TTL index on
 | `items`        | `Array`  | Each item has `itemId`, `itemName`, `itemPrice`, and `quantity`  |
 | `totalPrice`   | `Number` | Required                                                         |
 | `status`       | `String` | `Pending` (default) / `Accepted` / `Delivered` / `Cancelled`     |
+| `confirmation` | `Object` | WhatsApp confirmation (see below). Old orders do not have it     |
 
-There is an index on (`phoneNumber`, `createdAt`) to get a user's orders faster.
+`confirmation` fields:
+
+| Field         | Type     | Notes                                                                       |
+| ------------- | -------- | --------------------------------------------------------------------------- |
+| `code`        | `String` | 6 characters from `A–Z` and `2–9`, without `0 O 1 I L` (easy to read). Unique |
+| `status`      | `String` | `pending` (default) / `confirmed` / `expired`                               |
+| `expiresAt`   | `Date`   | **60 minutes** after the order                                              |
+| `confirmedAt` | `Date`   | When it was confirmed                                                       |
+| `method`      | `String` | Who confirmed: `whatsapp_bot` or `manual` in the schema list. The admin endpoint saves `admin` |
+
+Indexes: (`phoneNumber`, `createdAt`) to get a user's orders faster, `confirmation.code` (unique), and (`confirmation.status`, `confirmation.expiresAt`).
+
+---
+
+## ⚙️ StoreSettings
+
+One document for the whole store (`key: "main"`).
+
+| Field            | Type       | Notes                                                                     |
+| ---------------- | ---------- | ------------------------------------------------------------------------- |
+| `key`            | `String`   | Always `"main"`. Unique and cannot change                                 |
+| `whatsappNumber` | `String`   | The store's WhatsApp number. Cleaned with `normalizePhone`, e.g. `+970599123456` |
+| `updatedBy`      | `ObjectId` | The admin who changed it (optional)                                       |
+
+> ⚠️ If there is no `whatsappNumber`, **all purchases are blocked** with `503` ("الشراء غير متاح حالياً"). Set it with [`storeSettingsSeed.js`](#-store-whatsapp-number-storesettingsseedjs).
 
 ---
 
@@ -382,6 +409,8 @@ The `guestId` is sent in the URL and is validated before the request runs. Produ
 | `GET`   | `/api/guest/orders`                     | Guest Token  | Get a user's orders with the token                |
 | `GET`   | `/api/orders`                           | `moderator+` | Get all orders (dashboard)                        |
 | `PATCH` | `/api/orders/:orderId`                  | `moderator+` | Change order status (Body: `{ "status" }`)        |
+| `GET`   | `/api/orders/:id/confirmation`          | Public       | WhatsApp confirm status of an order               |
+| `POST`  | `/api/orders/confirm`                   | `moderator+` | Confirm an order by hand (Body: `{ "code", "senderPhone" }`) |
 
 ### Purchase body
 
@@ -427,6 +456,56 @@ Cancelled
 | Invalid data (ID or quantity)                                 | `400` |
 | Quantity is bigger than stock                                 | `400` |
 | Product not found or deleted                                  | `404` |
+| The store has no WhatsApp number                              | `503` |
+
+---
+
+# 💬 WhatsApp Order Confirmation
+
+Every new order must be confirmed by the customer on WhatsApp. This shows that the customer really owns the phone number.
+
+1. The customer buys (direct or cart). The order is saved with `confirmation.status: "pending"` and a 6-character code.
+2. Both purchase endpoints return:
+
+```json
+{
+  "data": {
+    "orderId": "...",
+    "confirmCode": "K7P2XM",
+    "expiresAt": "2026-11-23T15:35:00.000Z",
+    "whatsappUrl": "https://wa.me/970599123456?text=..."
+  }
+}
+```
+
+3. `whatsappUrl` opens a chat with the store number, with this message already typed:
+
+```text
+تأكيد طلب
+رمز التأكيد: K7P2XM
+```
+
+4. The frontend asks `GET /api/orders/:id/confirmation` every few seconds. It returns `pending`, `confirmed` or `expired`. A `pending` order after `expiresAt` is shown as `expired`. Old orders with no `confirmation` return `confirmed`.
+5. A moderator confirms it by hand after seeing the message (`POST /api/orders/confirm`).
+
+### Manual confirm (`POST /api/orders/confirm`)
+
+```json
+{ "code": "K7P2XM", "senderPhone": "+970599123456" }
+```
+
+- `senderPhone` must be the order's number. `+970` and `+972` count as the same number (`isSamePhone` in `src/utils/phone.js`).
+- The update only works while the order is still `pending` and not expired. So if two people confirm at the same time, only one succeeds.
+- The same function (`confirmOrderByCode` in `src/services/orderConfirmation.service.js`) is ready for a WhatsApp bot later.
+
+| Case                                 | Code  | `code` in the response |
+| ------------------------------------ | ----- | ---------------------- |
+| Confirmed                            | `200` | —                      |
+| Bad code format                      | `400` | `INVALID_CODE`         |
+| The phone is not the order's number  | `400` | `PHONE_MISMATCH`       |
+| No order with this code              | `404` | `NOT_FOUND`            |
+| Already confirmed                    | `409` | `ALREADY_CONFIRMED`    |
+| More than 60 minutes passed          | `410` | `EXPIRED`              |
 
 ---
 
@@ -688,6 +767,16 @@ node scripts/seedPhoneShop.js --replace            # backup → delete ALL items
 - Old orders keep the item name and price inside them, so they still show correctly. Old carts may point to deleted items until they expire (7 days).
 - Before writing, it checks the same limits as the API (name length, price, quantity, 1–6 images).
 
+### 💬 Store WhatsApp number: `storeSettingsSeed.js`
+
+Saves the store's WhatsApp number in `StoreSettings` (database in `MONGO_URI`). **Purchases do not work until you run it once.** Run it from `backend/`:
+
+```bash
+node scripts/storeSettingsSeed.js +970599123456
+```
+
+Run it again with another number to change it. A wrong number is rejected.
+
 ### Image migration from `imageURL` to `images`
 
 Products used to store one image in `imageURL`, then moved to the `images` array. Safe cleanup order:
@@ -733,6 +822,16 @@ This is because there is no step to check who owns the number.
 **Future fix:** an OTP system that sends a code to the phone before giving a guest token or showing orders.
 
 **Status:** started. The [`OtpCode`](#-otpcode) model exists, but sending the SMS and checking the code are not built yet.
+
+### 🤖 Automatic WhatsApp confirmation
+
+Right now a moderator confirms orders by hand. **Future fix:** a WhatsApp bot (for example the official WhatsApp Cloud API) with a webhook that reads the customer's message and calls `confirmOrderByCode` with `method: "whatsapp_bot"`.
+
+**Status:** postponed. The decision is not made yet.
+
+### ⏳ Expired orders keep the stock
+
+When an order expires without confirmation, its stock is not returned, and the order status does not change. Admins can also accept an order that is not confirmed.
 
 ### 📨 One error message format
 

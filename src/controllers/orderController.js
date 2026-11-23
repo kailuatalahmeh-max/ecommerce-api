@@ -7,8 +7,20 @@ const Cart = require("../models/Cart");
 const {
   createConfirmation,
   buildWhatsAppUrl,
+  confirmOrderByCode,
 } = require("../services/orderConfirmation.service");
 const { normalizePhone } = require("../utils/phone");
+
+const CONFIRM_ERRORS = {
+  INVALID_CODE: { status: 400, message: "رمز التأكيد غير صالح!" },
+  NOT_FOUND: { status: 404, message: "لا يوجد طلب بهذا الرمز!" },
+  ALREADY_CONFIRMED: { status: 409, message: "هذا الطلب مؤكد مسبقاً" },
+  EXPIRED: { status: 410, message: "انتهت صلاحية تأكيد هذا الطلب" },
+  PHONE_MISMATCH: {
+    status: 400,
+    message: "رقم المرسل لا يطابق رقم الطلب!",
+  },
+};
 
 exports.directPurchase = async (req, res, next) => {
   try {
@@ -333,6 +345,66 @@ exports.getOrdersByToken = async (req, res, next) => {
     return res.status(200).json({
       success: true,
       data: orders,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.getOrderConfirmation = async (req, res, next) => {
+  try {
+    const order = await Order.findById(req.params.id)
+      .select("confirmation")
+      .lean();
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "الطلب غير موجود!",
+      });
+    }
+
+    // الطلبات القديمة ما فيها confirmation، فنعتبرها مؤكدة
+    if (!order.confirmation) {
+      return res.json({ success: true, data: { status: "confirmed" } });
+    }
+
+    let { status, expiresAt } = order.confirmation;
+
+    // إذا الوقت انتهى وهو لسا pending، نعتبره منتهي حتى لو ما حدّثناه بالداتابيس
+    if (status === "pending" && new Date(expiresAt) < new Date()) {
+      status = "expired";
+    }
+
+    res.json({ success: true, data: { status, expiresAt } });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.confirmOrderManually = async (req, res, next) => {
+  try {
+    const { code, senderPhone } = req.body;
+
+    const result = await confirmOrderByCode({
+      code,
+      senderPhone,
+      method: "manual",
+    });
+
+    if (!result.ok) {
+      const error = CONFIRM_ERRORS[result.reason];
+      return res.status(error.status).json({
+        success: false,
+        code: result.reason,
+        message: error.message,
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "تم تأكيد الطلب بنجاح",
+      data: { orderId: result.order._id },
     });
   } catch (error) {
     next(error);
