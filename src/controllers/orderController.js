@@ -371,7 +371,6 @@ exports.getOrderConfirmation = async (req, res, next) => {
 
     let { status, expiresAt } = order.confirmation;
 
-    // إذا الوقت انتهى وهو لسا pending، نعتبره منتهي حتى لو ما حدّثناه بالداتابيس
     if (status === "pending" && new Date(expiresAt) < new Date()) {
       status = "expired";
     }
@@ -410,3 +409,5 @@ exports.confirmOrderManually = async (req, res, next) => {
     next(error);
   }
 };
+
+

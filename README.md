@@ -152,18 +152,18 @@ Response:
 npm test
 ```
 
-Tests run with `jest --runInBand` (one after another, because they share one database).
+Tests run with `jest --runInBand` (one file after another). Running in parallel (`npx jest`) also works, because each file has its own database.
 
-### Test database
+### Test database (in memory)
 
-Tests use a **real, separate MongoDB database**, not the production one. Create a `.env.testing` file inside `backend/` (it is in `.gitignore`, so it is not pushed to GitHub):
+Tests use **[mongodb-memory-server](https://github.com/typegoose/mongodb-memory-server)**: a real MongoDB that runs **in memory** on your computer. No Atlas, no internet, no IP whitelist.
 
-```env
-MONGO_URI=your_testing_mongodb_connection_string/testingDataBase
-JWT_SECRET=any_test_secret
-```
+- Each test file starts its own empty database (`testingDataBase`) and deletes it when the file finishes (`tests/setup/db.js`).
+- The tests can never touch a real database: they stop if the address is not `127.0.0.1`.
+- The **first run** downloads the MongoDB binary once (about 1–2 minutes). After that it is cached, and all tests take a few seconds.
+- `.env.testing` is **optional**. It only gives `JWT_SECRET` (`MONGO_URI` is not used). Without it, the tests use `"test-secret"`.
 
-> ⚠️ **Warning:** the tests delete collection data (`Admin`, `Item`, `Order`...) before each test. So there is a guard: the tests stop if the database name in the URI and in the real connection is not exactly `testingDataBase`. Never point this file to a real database.
+> MongoDB driver 7 loads the `os` module with a dynamic `import()`, and Jest blocks that, so the server refuses the connection ("Missing required sub-document 'driver'"). `db.js` fixes it by giving the driver `os` directly: `mongoose.connect(uri, { runtimeAdapters: { os } })`.
 
 ### What do the tests cover?
 
@@ -173,10 +173,9 @@ JWT_SECRET=any_test_secret
 | `orders.test.js`        | Direct purchase: success updates stock and total; rejects invalid ID, invalid quantity, quantity bigger than stock, missing product. **Stock conflict:** two requests at the same time for stock that is enough for only one → one `201`, one `400`, and only `1` order saved. **WhatsApp confirm:** purchase returns a code and a `wa.me` link; `503` with no store number; status `pending` → `expired`; a moderator confirms only once (`409` the second time); wrong phone → `PHONE_MISMATCH`; role `admin` → `403` |
 | `auth.test.js`          | Admin routes return `401` with no token, a fake token, or a valid token for an admin that does not exist        |
 | `health.test.js`        | `GET /health` returns `200`                                                                                     |
-| `cart.test.js`          | ⚠️ Empty for now (no tests yet)                                                                                  |
-| `unit/validation.test.js` | ⚠️ Empty for now (no tests yet)                                                                                |
+| `cart.test.js`          | Adding the same item twice adds up the quantity in **one** cart row (2 + 3 = 5), and adding to the cart does not take stock |
 
-> Jest reports the two empty files as failed suites ("Your test suite must contain at least one test"). All real tests pass.
+All **29 tests** pass.
 
 ---
 
@@ -282,7 +281,7 @@ The cart is deleted automatically **7 days** after its last update (TTL index on
 | ------------- | -------- | --------------------------------------------------------------------------- |
 | `code`        | `String` | 6 characters from `A–Z` and `2–9`, without `0 O 1 I L` (easy to read). Unique |
 | `status`      | `String` | `pending` (default) / `confirmed` / `expired`                               |
-| `expiresAt`   | `Date`   | **60 minutes** after the order                                              |
+| `expiresAt`   | `Date`   | **24 hours** after the order (`CONFIRM_TTL_MINUTES` in the service)         |
 | `confirmedAt` | `Date`   | When it was confirmed                                                       |
 | `method`      | `String` | Who confirmed: `whatsapp_bot` or `manual` in the schema list. The admin endpoint saves `admin` |
 
@@ -505,7 +504,7 @@ Every new order must be confirmed by the customer on WhatsApp. This shows that t
 | The phone is not the order's number  | `400` | `PHONE_MISMATCH`       |
 | No order with this code              | `404` | `NOT_FOUND`            |
 | Already confirmed                    | `409` | `ALREADY_CONFIRMED`    |
-| More than 60 minutes passed          | `410` | `EXPIRED`              |
+| More than 24 hours passed            | `410` | `EXPIRED`              |
 
 ---
 
@@ -801,7 +800,7 @@ This error happens with a `mongodb+srv://` link when the local DNS cannot resolv
 require("dns").setServers(["8.8.8.8", "1.1.1.1"]);
 ```
 
-> This line is only in `tests/setup/db.js` now (for tests), not in the server code.
+> This line is not in the server code. The tests do not need it any more (they use an in-memory database).
 
 ### `MongooseServerSelectionError` (IP not whitelisted)
 
@@ -855,7 +854,7 @@ For example, an empty cart at checkout returns `error` instead of `message`. It 
 
 ### 🧪 Missing tests
 
-`cart.test.js` and `unit/validation.test.js` are empty. The cart, cart checkout, admin management, guest session, and analytics routes have no tests yet.
+`cart.test.js` has only one test, and there are no unit tests yet. Cart checkout, removing and changing cart items, admin management, guest sessions, and analytics have no tests yet.
 
 ---
 

@@ -6,7 +6,7 @@ const { isSamePhone } = require("../utils/phone");
 // حروف واضحة بدون اللي بتتلخبط ببعض (0/O و 1/I/L)
 const CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 const CODE_LENGTH = 6;
-const CONFIRM_TTL_MINUTES = 60;
+const CONFIRM_TTL_MINUTES = 24 * 60;
 
 /** يولّد رمز عشوائي آمن، مثل: K7P2XM */
 function generateConfirmCode() {
