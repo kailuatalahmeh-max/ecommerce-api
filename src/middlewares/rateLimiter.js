@@ -6,8 +6,9 @@ const WINDOW_MINUTES = WINDOW_MS / 60000;
 const addLimiter = rateLimit({
   windowMs: WINDOW_MS,
   max: 1000,
+  // Same error format as the rest of the API: { success: false, message }
   message: {
-    status: 429,
+    success: false,
     message: `عدد الطلبات كبير، يرجى المحاولة بعد ${WINDOW_MINUTES} دقيقة.`,
   },
 });
@@ -17,7 +18,7 @@ const createLimiter = (maxRequests, message) => {
     windowMs: WINDOW_MS,
     max: maxRequests || 15,
     message: {
-      status: 429,
+      success: false,
       message:
         message ||
         `عدد الطلبات كبير، يرجى المحاولة بعد ${WINDOW_MINUTES} دقيقة.`,

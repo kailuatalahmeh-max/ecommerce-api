@@ -17,7 +17,7 @@ exports.addToCart = async (req, res, next) => {
     if (!mongoose.Types.ObjectId.isValid(itemId)) {
       return res.status(400).json({
         success: false,
-        error: "معرّف المنتج غير صالح",
+        message: "معرّف المنتج غير صالح",
       });
     }
 
@@ -123,7 +123,7 @@ exports.deleteCartItem = async (req, res, next) => {
     if (!cartUpdated) {
       return res
         .status(404)
-        .json({ success: false, error: "السلة غير موجودة!" });
+        .json({ success: false, message: "السلة غير موجودة!" });
     }
     return res.status(200).json({
       success: true,
@@ -144,7 +144,7 @@ exports.increaseQuantity = async (req, res, next) => {
     if (!cart) {
       return res
         .status(404)
-        .json({ success: false, error: "السلة غير موجودة!" });
+        .json({ success: false, message: "السلة غير موجودة!" });
     }
 
     const itemInCart = cart.items.find((item) => item._id.toString() === id);

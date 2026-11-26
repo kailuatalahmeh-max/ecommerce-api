@@ -117,7 +117,7 @@ exports.cartPurchase = async (req, res, next) => {
     if (!cart || !cart.items || cart.items.length === 0) {
       return res.status(404).json({
         success: false,
-        error: "السلة فارغة أو غير موجودة!",
+        message: "السلة فارغة أو غير موجودة!",
       });
     }
 

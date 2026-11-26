@@ -648,6 +648,22 @@ A central error middleware (`errorMiddleware.js`) turns common errors into clear
 | Duplicate value (`E11000`)                 | `409` |
 | Any unexpected error                       | `500` |
 
+### 📨 One Error Format
+
+Every error answer (controllers, middlewares, rate limit, 404, error handler) has the same shape:
+
+```json
+{
+  "success": false,
+  "message": "السلة غير موجودة!",
+  "code": "NOT_CANCELLABLE"
+}
+```
+
+- `message` is short Arabic text. The frontend shows it to the user in a toast, so it must be safe and clear for customers.
+- `code` is optional. It is there when the frontend or a test needs to know the exact case (for example `NOT_CANCELLABLE`, `NOT_ENOUGH_STOCK`, `ALREADY_CONFIRMED`).
+- There is no `error` key. The old cart answers used `error`, so the frontend showed a generic message instead. Now they use `message` too.
+
 ### 🚧 404 for Unknown Routes
 
 If no route matches, a middleware in `myApp.js` (after all routes, before `errorHandler`) returns JSON:
