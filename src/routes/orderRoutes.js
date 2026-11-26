@@ -9,6 +9,7 @@ const { createLimiter } = require("../middlewares/rateLimiter");
 const { requireRole } = require("../middlewares/requireRole");
 const { validateObjectId } = require("../middlewares/validateObjectId");
 const { requireStoreWhatsApp } = require("../middlewares/requireStoreWhatsApp");
+const { validateTrackOrder } = require("../middlewares/validateTrackOrder");
 
 // Mounted at /api/orders
 
@@ -38,13 +39,17 @@ router.patch(
   orderController.updateOrderStatus,
 );
 
+// TODO
 // حالة تأكيد الطلب (الفرونت يسأل عنها بعد الرجوع من واتساب)
-router.get(
-  "/:id/confirmation",
-  createLimiter(300),
-  validateObjectId("id"),
-  orderController.getOrderConfirmation,
-);
+if (process.env.WHATSAPP_BOT_ENABLED === "true") {
+  router.get(
+    "/:id/confirmation",
+    createLimiter(300),
+    validateObjectId("id"),
+    requireRole("bot"),
+    orderController.getOrderConfirmation,
+  );
+}
 
 // الأدمن: تأكيد الطلب يدوياً بالرمز ورقم المرسل
 router.post(
@@ -54,5 +59,7 @@ router.post(
   requireRole("moderator", "super_admin"),
   orderController.confirmOrderManually,
 );
+
+router.post("/track", createLimiter(20), validateTrackOrder, orderController.trackOrder);
 
 module.exports = router;

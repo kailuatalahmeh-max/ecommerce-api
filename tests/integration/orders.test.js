@@ -178,20 +178,12 @@ describe("WhatsApp order confirmation", () => {
     expect(await Order.countDocuments()).toBe(0);
   });
 
-  it("GET /:id/confirmation shows pending, then expired after the time ends", async () => {
+  // The route is added only when WHATSAPP_BOT_ENABLED === "true" (not in tests)
+  it("GET /:id/confirmation does not exist while the WhatsApp bot is off", async () => {
     const { orderId } = (await buyOne()).body.data;
 
-    let res = await request(app).get(`${URL}/${orderId}/confirmation`);
-    expect(res.status).toBe(200);
-    expect(res.body.data.status).toBe("pending");
-
-    await Order.updateOne(
-      { _id: orderId },
-      { $set: { "confirmation.expiresAt": new Date(Date.now() - 1000) } },
-    );
-
-    res = await request(app).get(`${URL}/${orderId}/confirmation`);
-    expect(res.body.data.status).toBe("expired");
+    const res = await request(app).get(`${URL}/${orderId}/confirmation`);
+    expect(res.status).toBe(404);
   });
 
   it("moderator confirms the order manually, only once", async () => {

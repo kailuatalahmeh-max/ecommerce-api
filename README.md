@@ -107,6 +107,7 @@ FRONTEND_URL=http://localhost:5173
 | `FRONTEND_URL` | Yes      | The only origin allowed by CORS (your frontend address)   |
 | `PORT`         | No       | Default `5000`                                            |
 | `MONGO_URI2`   | No       | Only for `scripts/seedPhoneShop.js` (the database it fills with demo products). The server does not use it |
+| `WHATSAPP_BOT_ENABLED` | No | `true` adds the bot route `GET /api/orders/:id/confirmation`. Leave it empty for now |
 
 When the server starts (`server.js`), it checks `MONGO_URI`, `JWT_SECRET`, and `FRONTEND_URL`. If one is missing, it prints `Missing environment variables: ...` and stops.
 
@@ -170,7 +171,7 @@ Tests use **[mongodb-memory-server](https://github.com/typegoose/mongodb-memory-
 | File                    | What it tests                                                                                                   |
 | ----------------------- | --------------------------------------------------------------------------------------------------------------- |
 | `items.test.js`         | Get products, add and edit by an admin, reject missing or invalid tokens, reject disabled admins, reject invalid data (negative price, `javascript:` links), invalid or missing IDs |
-| `orders.test.js`        | Direct purchase: success updates stock and total; rejects invalid ID, invalid quantity, quantity bigger than stock, missing product. **Stock conflict:** two requests at the same time for stock that is enough for only one → one `201`, one `400`, and only `1` order saved. **WhatsApp confirm:** purchase returns a code and a `wa.me` link; `503` with no store number; status `pending` → `expired`; a moderator confirms only once (`409` the second time); wrong phone → `PHONE_MISMATCH`; role `admin` → `403` |
+| `orders.test.js`        | Direct purchase: success updates stock and total; rejects invalid ID, invalid quantity, quantity bigger than stock, missing product. **Stock conflict:** two requests at the same time for stock that is enough for only one → one `201`, one `400`, and only `1` order saved. **WhatsApp confirm:** purchase returns a code and a `wa.me` link; `503` with no store number; `GET /:id/confirmation` is `404` while the bot is off; a moderator confirms only once (`409` the second time); wrong phone → `PHONE_MISMATCH`; role `admin` → `403` |
 | `auth.test.js`          | Admin routes return `401` with no token, a fake token, or a valid token for an admin that does not exist        |
 | `health.test.js`        | `GET /health` returns `200`                                                                                     |
 | `cart.test.js`          | Adding the same item twice adds up the quantity in **one** cart row (2 + 3 = 5), and adding to the cart does not take stock |
@@ -408,8 +409,9 @@ The `guestId` is sent in the URL and is validated before the request runs. Produ
 | `GET`   | `/api/guest/orders`                     | Guest Token  | Get a user's orders with the token                |
 | `GET`   | `/api/orders`                           | `moderator+` | Get all orders (dashboard)                        |
 | `PATCH` | `/api/orders/:orderId`                  | `moderator+` | Change order status (Body: `{ "status" }`)        |
-| `GET`   | `/api/orders/:id/confirmation`          | Public       | WhatsApp confirm status of an order               |
+| `POST`  | `/api/orders/track`                     | Public       | Find one order by confirm code + phone (Body: `{ "code", "phoneNumber" }`) |
 | `POST`  | `/api/orders/confirm`                   | `moderator+` | Confirm an order by hand (Body: `{ "code", "senderPhone" }`) |
+| `GET`   | `/api/orders/:id/confirmation`          | `bot`        | WhatsApp confirm status. 🚧 **Only exists when `WHATSAPP_BOT_ENABLED=true`** (otherwise `404`) |
 
 ### Purchase body
 
@@ -484,8 +486,34 @@ Every new order must be confirmed by the customer on WhatsApp. This shows that t
 رمز التأكيد: K7P2XM
 ```
 
-4. The frontend asks `GET /api/orders/:id/confirmation` every few seconds. It returns `pending`, `confirmed` or `expired`. A `pending` order after `expiresAt` is shown as `expired`. Old orders with no `confirmation` return `confirmed`.
-5. A moderator confirms it by hand after seeing the message (`POST /api/orders/confirm`).
+4. A moderator confirms it by hand after seeing the message (`POST /api/orders/confirm`).
+5. The customer can see the order and its confirm state with the code (`POST /api/orders/track`, see below) or in "My orders".
+
+> 🚧 `GET /api/orders/:id/confirmation` is for the future WhatsApp bot. The route is added **only** when `WHATSAPP_BOT_ENABLED=true`, and it needs the `bot` role. It returns `pending`, `confirmed` or `expired` (a `pending` order after `expiresAt` is shown as `expired`; old orders with no `confirmation` return `confirmed`). The frontend does not use it.
+
+### Track an order (`POST /api/orders/track`)
+
+```json
+{ "code": "K7P2XM", "phoneNumber": "+970599123456" }
+```
+
+The customer needs **both** the code and the phone number. The middleware `validateTrackOrder.js` checks them before the database:
+
+- Both must be text. Objects like `{ "$ne": null }` are refused (NoSQL injection).
+- `code`: spaces are removed and letters become uppercase (`k7p 2xm` → `K7P2XM`). Then it must be 6 characters from the confirm-code letters (no `0 O 1 I L`).
+- `phoneNumber`: cleaned with `normalizePhone`, the same as checkout (`+970 0599-123-456` → `+970599123456`).
+- The clean values go to the controller in `res.locals.tracking`.
+- Rate limit: **20** requests.
+
+| Case                                         | Code  |
+| -------------------------------------------- | ----- |
+| Found (`data` is the whole order)            | `200` |
+| Missing code or phone, or not text           | `400` |
+| Bad code format                              | `400` |
+| Bad phone number                             | `400` |
+| No order with this code **and** this phone   | `404` |
+
+> The phone must match exactly: an order saved with `+970` is not found with `+972` (manual confirm treats them as the same, track does not).
 
 ### Manual confirm (`POST /api/orders/confirm`)
 

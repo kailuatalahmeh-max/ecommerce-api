@@ -375,7 +375,7 @@ exports.getOrderConfirmation = async (req, res, next) => {
       status = "expired";
     }
 
-    res.json({ success: true, data: { status, expiresAt } });
+    res.status(200).json({ success: true, data: { status, expiresAt } });
   } catch (error) {
     next(error);
   }
@@ -400,7 +400,7 @@ exports.confirmOrderManually = async (req, res, next) => {
       });
     }
 
-    res.json({
+    res.status(200).json({
       success: true,
       message: "تم تأكيد الطلب بنجاح",
       data: { orderId: result.order._id },
@@ -410,4 +410,26 @@ exports.confirmOrderManually = async (req, res, next) => {
   }
 };
 
+exports.trackOrder = async (req, res, next) => {
+  try {
+    const { code, phoneNumber } = res.locals.tracking;
+    const order = await Order.findOne({
+      "confirmation.code": code,
+      phoneNumber,
+    });
 
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "رمز التأكيد أو رقم الهاتف غير صحيح",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: order,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
