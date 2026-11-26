@@ -810,52 +810,6 @@ MongoDB Atlas blocks IPs that are not in its list. Add your IP in Atlas → **Ne
 
 ---
 
-# 📝 Known Issues and Future Improvements
-
-These are things I know need work, but I postponed them because of time or cost.
-
-### 📱 Seeing other people's orders by phone number — ✅ fixed
-
-Before, `/api/guest/sessions` gave a token for **any** phone number, so anyone could see the orders of that number.
-
-**Fix:** guest sessions were removed. Now an order is shown only with its **confirmation code + phone number** (`/track`, `/track-many`). Someone who makes a fake order with your number sees only that fake order, never your orders.
-
-### 🤖 Automatic WhatsApp confirmation
-
-Right now a moderator confirms orders by hand. **Future fix:** a WhatsApp bot (for example the official WhatsApp Cloud API) with a webhook that reads the customer's message and calls `confirmOrderByCode` with `method: "whatsapp_bot"`.
-
-**Status:** postponed. The decision is not made yet.
-
-### ⏳ Expired orders keep the stock
-
-When an order expires without confirmation, its stock is not returned, and the order status does not change. Admins can also accept an order that is not confirmed.
-
-### 📨 One error message format
-
-Some endpoints use:
-
-```json
-{
-  "message": "..."
-}
-```
-
-and others use:
-
-```json
-{
-  "error": "..."
-}
-```
-
-For example, an empty cart at checkout returns `error` instead of `message`. It is better to use one format for all API responses.
-
-### 🧪 Missing tests
-
-`cart.test.js` has only one test, and there are no unit tests yet. Cart checkout, removing and changing cart items, admin management, and analytics have no tests yet.
-
----
-
 # 🌐 Hosting
 
 | Part         | Service       |
