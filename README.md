@@ -170,12 +170,12 @@ Tests use **[mongodb-memory-server](https://github.com/typegoose/mongodb-memory-
 | File                    | What it tests                                                                                                   |
 | ----------------------- | --------------------------------------------------------------------------------------------------------------- |
 | `items.test.js`         | Get products, add and edit by an admin, reject missing or invalid tokens, reject disabled admins, reject invalid data (negative price, `javascript:` links), invalid or missing IDs |
-| `orders.test.js`        | Direct purchase: success updates stock and total; rejects invalid ID, invalid quantity, quantity bigger than stock, missing product. **Stock conflict:** two requests at the same time for stock that is enough for only one → one `201`, one `400`, and only `1` order saved. **WhatsApp confirm:** purchase returns a code and a `wa.me` link; `503` with no store number; `GET /:id/confirmation` is `404` while the bot is off; a moderator confirms only once (`409` the second time); wrong phone → `PHONE_MISMATCH`; role `admin` → `403`. **Tracking:** `/track` cleans a messy code and phone, refuses objects (injection) and a wrong phone; `/track-many` answers `found` / `notFound` / `invalid` in order, never shows other orders of the same phone, refuses an empty or too long list (more than 20); the old `/api/guest/sessions` is `404`. **Cancel:** `/cancel` cancels a `Pending` order once and returns the stock (a second click → `409`, the stock is not returned twice); refuses a wrong phone (`404`), injection (`400`) and an `Accepted` order (`409`); a cancelled order can't be confirmed (`CANCELLED`) |
+| `orders.test.js`        | Direct purchase: success updates stock and total; rejects invalid ID, invalid quantity, quantity bigger than stock, missing product. **Stock conflict:** two requests at the same time for stock that is enough for only one → one `201`, one `400`, and only `1` order saved. **WhatsApp confirm:** purchase returns a code and a `wa.me` link; `503` with no store number; `GET /:id/confirmation` is `404` while the bot is off; a moderator confirms only once (`409` the second time); wrong phone → `PHONE_MISMATCH`; role `admin` → `403`. **Tracking:** `/track` cleans a messy code and phone, refuses objects (injection) and a wrong phone; `/track-many` answers `found` / `notFound` / `invalid` in order, never shows other orders of the same phone, refuses an empty or too long list (more than 20); the old `/api/guest/sessions` is `404`. **Cancel:** `/cancel` cancels a `Pending` order once and returns the stock (a second click → `409`, the stock is not returned twice); refuses a wrong phone (`404`), injection (`400`) and an `Accepted` order (`409`); a cancelled order can't be confirmed (`CANCELLED`). **Admin status:** admin cancel returns the stock once (`cancelledBy: "admin"`); opening it again takes the stock again, or is refused with `NOT_ENOUGH_STOCK`; other status changes don't touch the stock; the customer can't cancel an order the admin cancelled |
 | `auth.test.js`          | Admin routes return `401` with no token, a fake token, or a valid token for an admin that does not exist        |
 | `health.test.js`        | `GET /health` returns `200`                                                                                     |
 | `cart.test.js`          | Adding the same item twice adds up the quantity in **one** cart row (2 + 3 = 5), and adding to the cart does not take stock |
 
-All **38 tests** pass.
+All **43 tests** pass.
 
 ---
 
@@ -274,8 +274,8 @@ The cart is deleted automatically **7 days** after its last update (TTL index on
 | `totalPrice`   | `Number` | Required                                                         |
 | `status`       | `String` | `Pending` (default) / `Accepted` / `Delivered` / `Cancelled`     |
 | `confirmation` | `Object` | WhatsApp confirmation (see below). Old orders do not have it     |
-| `cancelledAt`  | `Date`   | When the customer cancelled the order (optional)                 |
-| `cancelledBy`  | `String` | `customer` when the customer cancelled it (optional)             |
+| `cancelledAt`  | `Date`   | When the order was cancelled (optional)                          |
+| `cancelledBy`  | `String` | `customer` or `admin`: who cancelled it (optional)               |
 
 `confirmation` fields:
 
@@ -548,7 +548,11 @@ Used by the **Cancel order** button in "My orders".
 | No order with this code + phone           | `404` | —                      |
 | Accepted, Delivered or already Cancelled  | `409` | `NOT_CANCELLABLE`      |
 
-> ⚠️ When an **admin** changes an order to `Cancelled` (`PATCH /api/orders/:orderId`), the stock does **not** come back yet.
+> **Admin status change** (`PATCH /api/orders/:orderId`) moves the stock too:
+> - Into `Cancelled`: the stock comes back, and the order saves `cancelledBy: "admin"`.
+> - Out of `Cancelled` (opened again): the stock is taken again, and `cancelledAt` / `cancelledBy` are removed. If one item has not enough stock (or was deleted), nothing changes and the answer is `400` `NOT_ENOUGH_STOCK`.
+> - Between other statuses (`Pending` / `Accepted` / `Delivered`): the stock does not change.
+> - The update works only if the status did not change in the meantime, so two clicks move the stock only once. Otherwise: `409` `STATUS_CHANGED`.
 
 ### Manual confirm (`POST /api/orders/confirm`)
 

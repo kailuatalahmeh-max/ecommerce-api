@@ -20,6 +20,38 @@ const CONFIRM_ERRORS = {
   },
 };
 
+// Give the order's quantities back to the items (a deleted item is skipped)
+async function returnStock(items) {
+  if (!items?.length) return;
+  await Item.bulkWrite(
+    items.map((item) => ({
+      updateOne: {
+        filter: { _id: item.itemId },
+        update: { $inc: { itemQuantity: item.quantity } },
+      },
+    })),
+  );
+}
+
+// Take the order's quantities from the items again.
+// All or nothing: if one item has not enough stock (or was deleted),
+// the items already taken are given back, and it returns false.
+async function takeStock(items) {
+  const taken = [];
+  for (const item of items) {
+    const result = await Item.updateOne(
+      { _id: item.itemId, itemQuantity: { $gte: item.quantity } },
+      { $inc: { itemQuantity: -item.quantity } },
+    );
+    if (result.modifiedCount === 0) {
+      await returnStock(taken);
+      return false;
+    }
+    taken.push(item);
+  }
+  return true;
+}
+
 exports.directPurchase = async (req, res, next) => {
   try {
     const { purchaseDetails } = req;
@@ -239,20 +271,58 @@ exports.updateOrderStatus = async (req, res, next) => {
       });
     }
 
-    const updatedOrder = await Order.findByIdAndUpdate(
-      orderId,
-      {
-        status: status,
-      },
-      { returnDocument: "after", runValidators: true },
-    );
-
-    if (!updatedOrder) {
+    const order = await Order.findById(orderId).lean();
+    if (!order) {
       return res.status(404).json({
         success: false,
         message: "الطلب غير موجود!",
       });
     }
+
+    const wasCancelled = order.status === "Cancelled";
+    const willCancel = status === "Cancelled";
+
+    // Stock moves only when the order goes into or out of "Cancelled":
+    //   → Cancelled: the stock comes back
+    //   Cancelled →: the stock is taken again (refused if there is not enough)
+    let update = { $set: { status } };
+    if (!wasCancelled && willCancel) {
+      update = {
+        $set: { status, cancelledAt: new Date(), cancelledBy: "admin" },
+      };
+    } else if (wasCancelled && !willCancel) {
+      update = {
+        $set: { status },
+        $unset: { cancelledAt: "", cancelledBy: "" },
+      };
+      const ok = await takeStock(order.items);
+      if (!ok) {
+        return res.status(400).json({
+          success: false,
+          code: "NOT_ENOUGH_STOCK",
+          message: "المخزون غير كافٍ لإعادة فتح هذا الطلب",
+        });
+      }
+    }
+
+    // Update only if nobody changed the status in the meantime
+    // (so two clicks at the same time move the stock only once)
+    const updatedOrder = await Order.findOneAndUpdate(
+      { _id: orderId, status: order.status },
+      update,
+      { returnDocument: "after", runValidators: true },
+    );
+
+    if (!updatedOrder) {
+      if (wasCancelled && !willCancel) await returnStock(order.items);
+      return res.status(409).json({
+        success: false,
+        code: "STATUS_CHANGED",
+        message: "تم تغيير حالة الطلب للتو، حدّث الصفحة وحاول مرة أخرى",
+      });
+    }
+
+    if (!wasCancelled && willCancel) await returnStock(order.items);
 
     return res.status(200).json({
       success: true,
@@ -419,15 +489,7 @@ exports.cancelOrder = async (req, res, next) => {
       });
     }
 
-    // Return the stock (an item that was deleted is skipped)
-    await Item.bulkWrite(
-      order.items.map((item) => ({
-        updateOne: {
-          filter: { _id: item.itemId },
-          update: { $inc: { itemQuantity: item.quantity } },
-        },
-      })),
-    );
+    await returnStock(order.items);
 
     res.status(200).json({
       success: true,

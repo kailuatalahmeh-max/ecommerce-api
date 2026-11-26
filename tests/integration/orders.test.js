@@ -404,3 +404,85 @@ describe("Track orders by code + phone", () => {
     expect(res.status).toBe(404);
   });
 });
+
+describe("Admin changes the order status (stock)", () => {
+  const PHONE = "+970599123456";
+
+  // stock 10, buy 3 → stock 7
+  const setup = async () => {
+    const { testItem } = await addTestItem();
+    const res = await request(app)
+      .post(URL)
+      .send(createTestOrder(testItem._id, { quantity: 3 }));
+    expect(res.status).toBe(201);
+    const { token } = await createTestAdmin("moderator");
+    const setStatus = (status) =>
+      request(app)
+        .patch(`${URL}/${res.body.data.orderId}`)
+        .set("Authorization", `Bearer ${token}`)
+        .send({ status });
+    const stock = async () => (await Item.findById(testItem._id)).itemQuantity;
+    return { ...res.body.data, testItem, setStatus, stock };
+  };
+
+  it("admin cancel returns the stock once, and saves cancelledBy admin", async () => {
+    const { orderId, setStatus, stock } = await setup();
+    expect(await stock()).toBe(7);
+
+    const res = await setStatus("Cancelled");
+    expect(res.status).toBe(200);
+    expect(await stock()).toBe(10);
+
+    const saved = await Order.findById(orderId).lean();
+    expect(saved.status).toBe("Cancelled");
+    expect(saved.cancelledBy).toBe("admin");
+
+    // Cancelled → Cancelled again: nothing changes
+    expect((await setStatus("Cancelled")).status).toBe(200);
+    expect(await stock()).toBe(10);
+  });
+
+  it("opening a cancelled order again takes the stock again", async () => {
+    const { orderId, setStatus, stock } = await setup();
+    await setStatus("Cancelled");
+
+    const res = await setStatus("Accepted");
+    expect(res.status).toBe(200);
+    expect(await stock()).toBe(7);
+
+    const saved = await Order.findById(orderId).lean();
+    expect(saved.status).toBe("Accepted");
+    expect(saved.cancelledAt).toBeUndefined();
+    expect(saved.cancelledBy).toBeUndefined();
+  });
+
+  it("opening a cancelled order again is refused when the stock is not enough", async () => {
+    const { orderId, testItem, setStatus, stock } = await setup();
+    await setStatus("Cancelled"); // stock 10
+    await Item.findByIdAndUpdate(testItem._id, { itemQuantity: 2 }); // sold meanwhile
+
+    const res = await setStatus("Pending");
+    expect(res.status).toBe(400);
+    expect(res.body.code).toBe("NOT_ENOUGH_STOCK");
+    expect(await stock()).toBe(2);
+    expect((await Order.findById(orderId)).status).toBe("Cancelled");
+  });
+
+  it("changes between other statuses do not touch the stock", async () => {
+    const { setStatus, stock } = await setup();
+    await setStatus("Accepted");
+    await setStatus("Delivered");
+    expect(await stock()).toBe(7);
+  });
+
+  it("an order the admin cancelled can't be cancelled by the customer again", async () => {
+    const { confirmCode, setStatus, stock } = await setup();
+    await setStatus("Cancelled");
+
+    const res = await request(app)
+      .post(`${URL}/cancel`)
+      .send({ code: confirmCode, phoneNumber: PHONE });
+    expect(res.status).toBe(409);
+    expect(await stock()).toBe(10);
+  });
+});
