@@ -3,6 +3,7 @@ const express = require("express");
 const cors = require("cors");
 const { createLimiter } = require("./src/middlewares/rateLimiter");
 const errorHandler = require("./src/middlewares/errorMiddleware");
+const { parseTrustProxy } = require("./src/utils/trustProxy");
 
 const authRoutes = require("./src/routes/authRoutes");
 const adminRoutes = require("./src/routes/adminRoutes");
@@ -14,7 +15,9 @@ const storeSettingsRoutes = require("./src/routes/storeSettingsRoutes");
 
 const app = express();
 
-app.set("trust proxy", 1);
+// Number of proxies in front of the app (Render: 2 = Cloudflare + load balancer).
+// Gives the real client IP in req.ip, for the rate limits and the request log.
+app.set("trust proxy", parseTrustProxy(process.env.TRUST_PROXY));
 app.use(
   cors({
     origin: process.env.FRONTEND_URL,

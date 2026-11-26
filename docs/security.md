@@ -10,6 +10,22 @@ Each endpoint has a maximum number of requests per **15 minutes** (per IP). The 
 
 The goal is to reduce API abuse.
 
+### 🌐 Real client IP (`TRUST_PROXY`)
+
+The rate limits count requests **per IP** (`req.ip`), and the request log prints it. Behind proxies, Express must know **how many** proxies to trust, to find the real client IP in `X-Forwarded-For`. This number comes from `TRUST_PROXY` (`src/utils/trustProxy.js`, used in `myApp.js`).
+
+On Render a request goes: **client → Cloudflare → Render's load balancer → the app**. So on Render set **`TRUST_PROXY=2`**.
+
+| Value on Render | `req.ip` is | Problem |
+| --------------- | ----------- | ------- |
+| `1` (too low)   | a Cloudflare IP, which changes | One user is counted under several IPs (gets the limit many times), and users on the same Cloudflare server share one counter. The log shows Cloudflare IPs |
+| `2` ✅          | the real client IP | — |
+| `3` or more (too high) | the IP the client writes | A client can fake its IP with its own `X-Forwarded-For` header and skip the limits |
+
+- Missing or wrong value (not a whole number from `0` to `10`) → `1`.
+- Local work needs no change (no proxy, so the value does not matter).
+- **How to check on the live server:** send several requests to `/health` and read the `x-ratelimit-remaining` header. It must go down **1 by 1**. A request with a fake `X-Forwarded-For: 1.2.3.4` header must **not** reset it.
+
 ### 🌍 CORS
 
 CORS allows only one origin: the value of `FRONTEND_URL`.
@@ -109,13 +125,11 @@ This stops very large data from being sent to the server.
 
 ### 🌐 Trust Proxy
 
-This is enabled:
-
 ```javascript
-app.set("trust proxy", 1);
+app.set("trust proxy", parseTrustProxy(process.env.TRUST_PROXY));
 ```
 
-So the rate limiter can read the user's real IP when the app runs behind a proxy like **Render**.
+The number of trusted proxies comes from `TRUST_PROXY` (on Render: `2`). See [Real client IP](#-real-client-ip-trust_proxy).
 
 ---
 

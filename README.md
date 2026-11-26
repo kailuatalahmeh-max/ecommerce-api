@@ -55,7 +55,7 @@ backend/
 │   ├── models/           # Admin, Cart, Item, Order, StoreSettings
 │   ├── routes/           # Route definitions
 │   ├── services/         # orderConfirmation (WhatsApp confirm code), stock (return / take stock), expireOrders (expired orders job)
-│   └── utils/            # Shared constants (constants.js), phone number cleaning (phone.js)
+│   └── utils/            # Shared constants (constants.js), phone number cleaning (phone.js), proxy count (trustProxy.js)
 └── tests/
     ├── setup/            # Test database connection
     ├── fixtures/         # Ready-made test data
@@ -97,6 +97,7 @@ cp .env.example .env
 | `PORT`         | No       | Default `5000`                                            |
 | `MONGO_URI2`   | No       | Only for `scripts/seedPhoneShop.js` and `scripts/updateAdminsLastActivity.js`. The server does not use it |
 | `WHATSAPP_BOT_ENABLED` | No | `true` adds the bot route `GET /api/orders/:id/confirmation`. Leave it empty for now |
+| `TRUST_PROXY`  | No       | How many proxies are in front of the app. Default `1`. **On Render set `2`** (Cloudflare + load balancer). See [Security](docs/security.md#-real-client-ip-trust_proxy) |
 
 When the server starts (`server.js`), it checks `MONGO_URI`, `JWT_SECRET`, and `FRONTEND_URL`. If one is missing, it prints `Missing environment variables: ...` and stops.
 

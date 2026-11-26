@@ -55,7 +55,7 @@ backend/
 │   ├── models/           # Admin, Cart, Item, Order, StoreSettings
 │   ├── routes/           # تعريف المسارات
 │   ├── services/         # orderConfirmation (رمز تأكيد واتساب)، stock (إرجاع / أخذ المخزون)، expireOrders (مهمة الطلبات المنتهية)
-│   └── utils/            # ثوابت مشتركة (constants.js)، تنظيف رقم الهاتف (phone.js)
+│   └── utils/            # ثوابت مشتركة (constants.js)، تنظيف رقم الهاتف (phone.js)، عدد الـ proxies (trustProxy.js)
 └── tests/
     ├── setup/            # الاتصال بقاعدة بيانات الاختبار
     ├── fixtures/         # بيانات جاهزة للاختبارات
@@ -97,6 +97,7 @@ cp .env.example .env
 | `PORT`         | لا    | الافتراضي `5000`                                             |
 | `MONGO_URI2`   | لا    | فقط لـ `scripts/seedPhoneShop.js` و`scripts/updateAdminsLastActivity.js`. السيرفر لا يستخدمه |
 | `WHATSAPP_BOT_ENABLED` | لا | القيمة `true` تضيف مسار البوت `GET /api/orders/:id/confirmation`. اتركه فارغاً حالياً |
+| `TRUST_PROXY`  | لا    | عدد الـ proxies أمام التطبيق. الافتراضي `1`. **على Render ضع `2`** (Cloudflare + الـ load balancer). راجع [الحماية](docs/ar/security.md#-عنوان-ip-الحقيقي-للزبون-trust_proxy) |
 
 عند تشغيل السيرفر (`server.js`) يتم التحقق من `MONGO_URI` و`JWT_SECRET` و`FRONTEND_URL`. إذا كان أحدها مفقوداً، يطبع `Missing environment variables: ...` ويتوقف.
 

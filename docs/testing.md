@@ -41,4 +41,6 @@ Tests use **[mongodb-memory-server](https://github.com/typegoose/mongodb-memory-
 
 - **`storeSettings.test.js`**: `super_admin` saves a messy number and it is saved clean (`+970599111222`), only one settings document; `GET` gives `null` with no number; a bad, empty, object or unknown country number → `400` `INVALID_PHONE` and the old number stays; `admin` and `moderator` → `403`, no token → `401`; `GET /public` works with no token and returns **only** `whatsappNumber`
 
-All **51 tests** pass.
+- **`unit/trustProxy.test.js`**: `TRUST_PROXY` reads `0`–`10`, and a missing or wrong value gives `1`; with `2` (Cloudflare + Render) `req.ip` is the real client IP and a fake `X-Forwarded-For` can't change it; with `1` it is the Cloudflare IP
+
+All **55 tests** pass.
