@@ -671,7 +671,7 @@ If no route matches, a middleware in `myApp.js` (after all routes, before `error
 ```json
 {
   "success": false,
-  "message": "Route not found"
+  "message": "المسار غير موجود"
 }
 ```
 

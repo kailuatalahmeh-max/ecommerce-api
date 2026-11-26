@@ -72,7 +72,7 @@ app.get("/health", createLimiter(1000), (req, res) => {
 app.use((req, res) => {
   res.status(404).json({
     success: false,
-    message: "Route not found",
+    message: "المسار غير موجود",
   });
 });
 
