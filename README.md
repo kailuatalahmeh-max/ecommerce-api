@@ -182,9 +182,9 @@ Tests use **[mongodb-memory-server](https://github.com/typegoose/mongodb-memory-
 | `auth.test.js`          | Admin routes return `401` with no token, a fake token, or a valid token for an admin that does not exist        |
 | `health.test.js`        | `GET /health` returns `200`                                                                                     |
 | `cart.test.js`          | Adding the same item twice adds up the quantity in **one** cart row (2 + 3 = 5), and adding to the cart does not take stock |
-| `storeSettings.test.js` | `super_admin` saves a messy number and it is saved clean (`+970599111222`), only one settings document; `GET` gives `null` with no number; a bad, empty, object or unknown country number → `400` `INVALID_PHONE` and the old number stays; `admin` and `moderator` → `403`, no token → `401` |
+| `storeSettings.test.js` | `super_admin` saves a messy number and it is saved clean (`+970599111222`), only one settings document; `GET` gives `null` with no number; a bad, empty, object or unknown country number → `400` `INVALID_PHONE` and the old number stays; `admin` and `moderator` → `403`, no token → `401`; `GET /public` works with no token and returns **only** `whatsappNumber` |
 
-All **50 tests** pass.
+All **51 tests** pass.
 
 ---
 
@@ -598,11 +598,12 @@ An order that is **not confirmed on WhatsApp in 24 hours** is cancelled by the s
 
 # ⚙️ Store Settings
 
-Only `super_admin` can see or change them. Used by the frontend page `/admin/store-settings`.
+Only `super_admin` can see or change them (except `/public`). Used by the frontend page `/admin/store-settings`.
 
 | Method | Endpoint              | Role          | Description                                      |
 | ------ | --------------------- | ------------- | ------------------------------------------------ |
 | `GET`  | `/api/store-settings` | `super_admin` | The store WhatsApp number, when and by whom it was changed |
+| `GET`  | `/api/store-settings/public` | Public | **Only** the store WhatsApp number (`{ "whatsappNumber" }`, or `null`). Used by "Contact support" in "My orders" |
 | `PUT`  | `/api/store-settings` | `super_admin` | Save the store WhatsApp number (Body: `{ "whatsappNumber" }`) |
 
 `GET` answer (`whatsappNumber` is `null` when no number is saved):
@@ -621,7 +622,8 @@ Only `super_admin` can see or change them. Used by the frontend page `/admin/sto
 - `PUT` cleans the number with `normalizePhone` (`"+970 0599-123-456"` → `"+970599123456"`). A bad number → `400` `INVALID_PHONE`, and the old number stays.
 - It saves `updatedBy` (the admin who changed it). There is always **one** settings document (`key: "main"`, upsert).
 - The number can be **changed but not removed**: with no number, all purchases stop (`503`).
-- Rate limit: 100 for `GET`, 20 for `PUT`.
+- `/public` shows nothing else (no dates, no admin name). The number is not secret: customers already see it in the WhatsApp link after buying.
+- Rate limit: 100 for `GET`, 300 for `GET /public`, 20 for `PUT`.
 - The script [`storeSettingsSeed.js`](#-store-whatsapp-number-storesettingsseedjs) still works (for the first setup, before any `super_admin` logs in).
 
 ---

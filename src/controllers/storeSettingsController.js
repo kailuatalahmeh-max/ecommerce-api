@@ -22,6 +22,24 @@ exports.getStoreSettings = async (req, res, next) => {
   }
 };
 
+// GET /api/store-settings/public (everyone): only the store's WhatsApp number,
+// for the "Contact support" part of the site. It is not secret: customers
+// already see it in the WhatsApp link after buying. Nothing else is shown.
+exports.getPublicStoreSettings = async (req, res, next) => {
+  try {
+    const settings = await StoreSettings.findOne({ key: "main" })
+      .select("whatsappNumber")
+      .lean();
+
+    res.status(200).json({
+      success: true,
+      data: { whatsappNumber: settings?.whatsappNumber || null },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // PUT /api/store-settings (super_admin): save the store's WhatsApp number
 // Body: { "whatsappNumber": "+970599123456" }
 // The number can be changed, but not removed: with no number, all purchases stop.

@@ -65,6 +65,24 @@ describe("Store settings (WhatsApp number)", () => {
     expect(saved.whatsappNumber).toBe("+970599111222");
   });
 
+  it("GET /public gives everyone only the WhatsApp number", async () => {
+    const empty = await request(app).get(`${URL}/public`);
+    expect(empty.status).toBe(200);
+    expect(empty.body.data).toEqual({ whatsappNumber: null });
+
+    const { admin } = await createTestAdmin("super_admin");
+    await StoreSettings.create({
+      key: "main",
+      whatsappNumber: "+970599111222",
+      updatedBy: admin._id,
+    });
+
+    const res = await request(app).get(`${URL}/public`); // no token
+    expect(res.status).toBe(200);
+    // nothing else (no updatedBy, no dates)
+    expect(res.body.data).toEqual({ whatsappNumber: "+970599111222" });
+  });
+
   it("only super_admin can see or change it", async () => {
     for (const role of ["admin", "moderator"]) {
       const { token } = await createTestAdmin(role);

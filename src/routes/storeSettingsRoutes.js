@@ -5,7 +5,14 @@ const { verifyToken } = require("../middlewares/authMiddleware");
 const { createLimiter } = require("../middlewares/rateLimiter");
 const { requireRole } = require("../middlewares/requireRole");
 
-// Mounted at /api/store-settings (super_admin only)
+// Mounted at /api/store-settings (super_admin only, except /public)
+
+// Everyone: only the store WhatsApp number (for "Contact support")
+router.get(
+  "/public",
+  createLimiter(300),
+  storeSettingsController.getPublicStoreSettings,
+);
 
 router.get(
   "/",
