@@ -16,7 +16,7 @@ A backend for an online store, built with **Express.js** and **MongoDB**. It sup
 
 > 💡 This is my first real backend project. I built it after about one and a half months of learning Express.js and MongoDB.
 
-> This file is about the backend only. The repository has two folders: `backend/` and `frontend/`. See the [frontend README](../frontend/README.md).
+> This file is about the backend only. The frontend is in a separate repository: [ecommerce-frontend](https://github.com/kailuatalahmeh-max/ecommerce-frontend/blob/main/README.md).
 
 > 📖 The details (API, orders, models, security, scripts, tests) are in the [`docs/`](#-documentation) folder.
 

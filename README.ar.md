@@ -16,7 +16,7 @@
 
 > 💡 هذا أول مشروع Backend حقيقي لي. بنيته بعد حوالي شهر ونصف من تعلم Express.js و MongoDB.
 
-> هذا الملف يخص الـ Backend فقط. المستودع يحتوي على مجلدين: `backend/` و `frontend/`. راجع [ملف الـ Frontend](../frontend/README.ar.md).
+> هذا الملف يخص الـ Backend فقط. الـ Frontend موجود في مستودع منفصل: [ecommerce-frontend](https://github.com/kailuatalahmeh-max/ecommerce-frontend/blob/main/README.ar.md).
 
 > 📖 التفاصيل (الـ API، الطلبات، النماذج، الحماية، السكربتات، الاختبارات) موجودة في مجلد [`docs/`](#-التوثيق).
 
