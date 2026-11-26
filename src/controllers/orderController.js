@@ -1,6 +1,4 @@
 const mongoose = require("mongoose");
-const crypto = require("crypto");
-const GuestSession = require("../models/GuestSession");
 const Order = require("../models/Order");
 const Item = require("../models/Item");
 const Cart = require("../models/Cart");
@@ -9,7 +7,6 @@ const {
   buildWhatsAppUrl,
   confirmOrderByCode,
 } = require("../services/orderConfirmation.service");
-const { normalizePhone } = require("../utils/phone");
 
 const CONFIRM_ERRORS = {
   INVALID_CODE: { status: 400, message: "رمز التأكيد غير صالح!" },
@@ -266,91 +263,6 @@ exports.updateOrderStatus = async (req, res, next) => {
   }
 };
 
-exports.verifyPhoneAndCreateToken = async (req, res, next) => {
-  try {
-    const { phoneNumber } = req.body;
-
-    if (
-      !phoneNumber ||
-      typeof phoneNumber !== "string" ||
-      !phoneNumber.trim()
-    ) {
-      return res.status(400).json({
-        success: false,
-        message: "يرجى إدخال رقم الهاتف",
-      });
-    }
-
-    // نفس شكل الرقم المحفوظ في الطلب، مثال: +970599123456
-    const cleanPhone = normalizePhone(phoneNumber);
-
-    if (!cleanPhone) {
-      return res.status(400).json({
-        success: false,
-        message: "رقم الهاتف غير صحيح، اختر كود الدولة وأدخل 9 أرقام",
-      });
-    }
-
-    const orders = await Order.find({ phoneNumber: cleanPhone }).limit(1);
-
-    if (!orders || orders.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "لا توجد طلبات مرتبطة بهذا الرقم",
-      });
-    }
-
-    const token = crypto.randomBytes(32).toString("hex");
-
-    await GuestSession.create({
-      phoneNumber: cleanPhone,
-      token: token,
-    });
-
-    return res.status(200).json({
-      success: true,
-      token: token,
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-exports.getOrdersByToken = async (req, res, next) => {
-  res.set("Cache-Control", "no-store");
-
-  try {
-    const token = req.headers["x-guest-token"];
-
-    if (!token || typeof token !== "string" || !token.trim()) {
-      return res.status(400).json({
-        success: false,
-        message: "الرمز غير موجود",
-      });
-    }
-
-    const session = await GuestSession.findOne({ token: token.trim() });
-
-    if (!session) {
-      return res.status(401).json({
-        success: false,
-        message: "انتهت الجلسة، يرجى إدخال رقم الهاتف مرة أخرى",
-      });
-    }
-
-    const orders = await Order.find({
-      phoneNumber: session.phoneNumber,
-    }).sort({ createdAt: -1 });
-
-    return res.status(200).json({
-      success: true,
-      data: orders,
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
 exports.getOrderConfirmation = async (req, res, next) => {
   try {
     const order = await Order.findById(req.params.id)
@@ -429,6 +341,44 @@ exports.trackOrder = async (req, res, next) => {
       success: true,
       data: order,
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// POST /api/orders/track-many: fresh data for the orders saved in the browser
+// (one database query for all of them)
+exports.trackManyOrders = async (req, res, next) => {
+  try {
+    const pairs = res.locals.trackMany;
+    const validPairs = pairs.filter((p) => p.valid);
+
+    let orders = [];
+    if (validPairs.length > 0) {
+      orders = await Order.find({
+        $or: validPairs.map((p) => ({
+          "confirmation.code": p.code,
+          phoneNumber: p.phoneNumber,
+        })),
+      }).lean();
+    }
+
+    // code is unique, so code + phone points to one order at most
+    const byKey = new Map(
+      orders.map((o) => [`${o.confirmation.code}|${o.phoneNumber}`, o]),
+    );
+
+    // Same order and length as the request
+    const data = pairs.map((p) => {
+      if (!p.valid) return { ...p.input, status: "invalid" };
+
+      const order = byKey.get(`${p.code}|${p.phoneNumber}`);
+      if (!order) return { ...p.input, status: "notFound" };
+
+      return { ...p.input, status: "found", order };
+    });
+
+    res.status(200).json({ success: true, data });
   } catch (error) {
     next(error);
   }

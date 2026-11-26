@@ -233,3 +233,108 @@ describe("WhatsApp order confirmation", () => {
     expect(res.status).toBe(403);
   });
 });
+
+describe("Track orders by code + phone", () => {
+  const PHONE = "+970599123456"; // the phone in createTestOrder
+
+  const buy = async () => {
+    const { testItem } = await addTestItem();
+    const res = await request(app)
+      .post(URL)
+      .send(createTestOrder(testItem._id, { quantity: 1 }));
+    expect(res.status).toBe(201);
+    return res.body.data; // { orderId, confirmCode, ... }
+  };
+
+  it("POST /track finds the order with a messy code and phone", async () => {
+    const { orderId, confirmCode } = await buy();
+
+    const res = await request(app)
+      .post(`${URL}/track`)
+      .send({
+        code: ` ${confirmCode.slice(0, 3).toLowerCase()} ${confirmCode.slice(3)}`,
+        phoneNumber: "+970 0599-123-456",
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data._id).toBe(orderId);
+  });
+
+  it("POST /track refuses objects (NoSQL injection) and wrong phones", async () => {
+    const { confirmCode } = await buy();
+
+    const injection = await request(app)
+      .post(`${URL}/track`)
+      .send({ code: { $ne: null }, phoneNumber: PHONE });
+    expect(injection.status).toBe(400);
+
+    const otherPhone = await request(app)
+      .post(`${URL}/track`)
+      .send({ code: confirmCode, phoneNumber: "+970591111111" });
+    expect(otherPhone.status).toBe(404);
+  });
+
+  it("POST /track-many answers found / notFound / invalid in the same order", async () => {
+    const first = await buy();
+    const second = await buy();
+
+    const res = await request(app)
+      .post(`${URL}/track-many`)
+      .send({
+        orders: [
+          { code: second.confirmCode, phoneNumber: PHONE },
+          { code: "ABCDEF", phoneNumber: PHONE }, // valid format, no order
+          { code: "bad", phoneNumber: PHONE }, // bad format
+          { code: first.confirmCode, phoneNumber: "+970591111111" }, // wrong phone
+          { code: first.confirmCode.toLowerCase(), phoneNumber: "0599123456" }, // no country code
+          { code: first.confirmCode, phoneNumber: PHONE },
+        ],
+      });
+
+    expect(res.status).toBe(200);
+    const statuses = res.body.data.map((r) => r.status);
+    expect(statuses).toEqual([
+      "found",
+      "notFound",
+      "invalid",
+      "notFound",
+      "invalid",
+      "found",
+    ]);
+    expect(res.body.data[0].order._id).toBe(second.orderId);
+    expect(res.body.data[5].order._id).toBe(first.orderId);
+    // the browser's own values come back, so it can match its saved list
+    expect(res.body.data[2].code).toBe("bad");
+  });
+
+  it("POST /track-many never shows other orders of the same phone", async () => {
+    const mine = await buy();
+    await buy(); // another order with the same phone
+
+    const res = await request(app)
+      .post(`${URL}/track-many`)
+      .send({ orders: [{ code: mine.confirmCode, phoneNumber: PHONE }] });
+
+    expect(res.body.data).toHaveLength(1);
+    expect(res.body.data[0].order._id).toBe(mine.orderId);
+  });
+
+  it("POST /track-many refuses a missing, empty or too long list", async () => {
+    const many = Array.from({ length: 21 }, () => ({
+      code: "ABCDEF",
+      phoneNumber: PHONE,
+    }));
+
+    for (const body of [{}, { orders: [] }, { orders: "x" }, { orders: many }]) {
+      const res = await request(app).post(`${URL}/track-many`).send(body);
+      expect(res.status).toBe(400);
+    }
+  });
+
+  it("the old guest session routes are gone", async () => {
+    const res = await request(app)
+      .post("/api/guest/sessions")
+      .send({ phoneNumber: PHONE });
+    expect(res.status).toBe(404);
+  });
+});

@@ -8,7 +8,7 @@ A backend for an online store, built with **Express.js** and **MongoDB**. It sup
 - A shopping cart without login, using a `Guest ID`.
 - Creating and managing orders.
 - Order confirmation on WhatsApp with a one-time code (confirmed by hand for now).
-- Order tracking with a guest session (`Guest Token`).
+- Order tracking by confirmation code + phone number (one order, or many at once).
 - An admin dashboard with multi-level roles, and enabling/disabling admin accounts.
 - API abuse protection and input validation.
 - Handling stock conflicts during purchases.
@@ -31,7 +31,7 @@ A backend for an online store, built with **Express.js** and **MongoDB**. It sup
 | **express-rate-limit**   | Protecting endpoints from abuse            |
 | **cors**                 | Handling requests from the frontend        |
 | **dotenv**               | Reading environment variables from `.env`  |
-| **crypto**               | Generating guest session tokens            |
+| **crypto**               | Generating random order confirmation codes |
 | **Jest + Supertest**     | API tests                                  |
 
 ---
@@ -48,7 +48,7 @@ backend/
 │   ├── config/           # Database connection
 │   ├── controllers/      # Business logic
 │   ├── middlewares/      # Auth, roles, validation, rate limiting, error handling, store WhatsApp check
-│   ├── models/           # Admin, Cart, GuestSession, Item, Order, OtpCode, StoreSettings
+│   ├── models/           # Admin, Cart, Item, Order, StoreSettings
 │   ├── routes/           # Route definitions
 │   ├── services/         # orderConfirmation.service.js (WhatsApp confirm code)
 │   └── utils/            # Shared constants (constants.js), phone number cleaning (phone.js)
@@ -70,7 +70,6 @@ backend/
 | `itemRoutes.js`       | `/api/items`     | Products                                 |
 | `cartRoutes.js`       | `/api/carts`     | Cart                                     |
 | `orderRoutes.js`      | `/api/orders`    | Orders                                   |
-| `guestRoutes.js`      | `/api/guest`     | Guest sessions and guest orders          |
 
 Cart checkout (`POST /api/carts/:guestId/checkout`) is in `cartRoutes.js`, but it uses `orderController`.
 
@@ -171,12 +170,12 @@ Tests use **[mongodb-memory-server](https://github.com/typegoose/mongodb-memory-
 | File                    | What it tests                                                                                                   |
 | ----------------------- | --------------------------------------------------------------------------------------------------------------- |
 | `items.test.js`         | Get products, add and edit by an admin, reject missing or invalid tokens, reject disabled admins, reject invalid data (negative price, `javascript:` links), invalid or missing IDs |
-| `orders.test.js`        | Direct purchase: success updates stock and total; rejects invalid ID, invalid quantity, quantity bigger than stock, missing product. **Stock conflict:** two requests at the same time for stock that is enough for only one → one `201`, one `400`, and only `1` order saved. **WhatsApp confirm:** purchase returns a code and a `wa.me` link; `503` with no store number; `GET /:id/confirmation` is `404` while the bot is off; a moderator confirms only once (`409` the second time); wrong phone → `PHONE_MISMATCH`; role `admin` → `403` |
+| `orders.test.js`        | Direct purchase: success updates stock and total; rejects invalid ID, invalid quantity, quantity bigger than stock, missing product. **Stock conflict:** two requests at the same time for stock that is enough for only one → one `201`, one `400`, and only `1` order saved. **WhatsApp confirm:** purchase returns a code and a `wa.me` link; `503` with no store number; `GET /:id/confirmation` is `404` while the bot is off; a moderator confirms only once (`409` the second time); wrong phone → `PHONE_MISMATCH`; role `admin` → `403`. **Tracking:** `/track` cleans a messy code and phone, refuses objects (injection) and a wrong phone; `/track-many` answers `found` / `notFound` / `invalid` in order, never shows other orders of the same phone, refuses an empty or too long list (more than 20); the old `/api/guest/sessions` is `404` |
 | `auth.test.js`          | Admin routes return `401` with no token, a fake token, or a valid token for an admin that does not exist        |
 | `health.test.js`        | `GET /health` returns `200`                                                                                     |
 | `cart.test.js`          | Adding the same item twice adds up the quantity in **one** cart row (2 + 3 = 5), and adding to the cart does not take stock |
 
-All **29 tests** pass.
+All **35 tests** pass.
 
 ---
 
@@ -304,31 +303,6 @@ One document for the whole store (`key: "main"`).
 
 ---
 
-## 🎟️ GuestSession
-
-A guest session lets the user track orders without sending the phone number in every request.
-
-| Field         | Type     | Notes                                                                       |
-| ------------- | -------- | --------------------------------------------------------------------------- |
-| `phoneNumber` | `String` | Phone number linked to the session                                          |
-| `token`       | `String` | Unique random token from `crypto.randomBytes` (32 bytes, `hex` format)      |
-| `createdAt`   | `Date`   | The session is deleted automatically after **30 days** (TTL index)          |
-
----
-
-## 🔢 OtpCode
-
-> 🚧 **Not used yet.** This model is the first step of the OTP feature (see [Known Issues](#-phone-ownership-check-with-otpsms)). No route or controller uses it yet.
-
-| Field         | Type     | Notes                                                                 |
-| ------------- | -------- | --------------------------------------------------------------------- |
-| `phoneNumber` | `String` | Required, unique (one active code per number)                         |
-| `codeHash`    | `String` | Required. The hashed code (the plain code is never saved)             |
-| `attempts`    | `Number` | Wrong tries so far. Default `0`                                        |
-| `expiresAt`   | `Date`   | Required. The code is deleted automatically at this time (TTL index)  |
-
----
-
 # 📚 API Endpoints
 
 All routes are under `/api`, and all responses from `/api` have `Cache-Control: no-store`.
@@ -405,11 +379,10 @@ The `guestId` is sent in the URL and is validated before the request runs. Produ
 | ------- | --------------------------------------- | ------------ | ------------------------------------------------- |
 | `POST`  | `/api/orders`                           | Public       | Buy one product directly, without the cart        |
 | `POST`  | `/api/carts/:guestId/checkout`          | Public       | Buy everything in the cart                        |
-| `POST`  | `/api/guest/sessions`                   | Public       | Create a guest token with a phone number          |
-| `GET`   | `/api/guest/orders`                     | Guest Token  | Get a user's orders with the token                |
 | `GET`   | `/api/orders`                           | `moderator+` | Get all orders (dashboard)                        |
 | `PATCH` | `/api/orders/:orderId`                  | `moderator+` | Change order status (Body: `{ "status" }`)        |
 | `POST`  | `/api/orders/track`                     | Public       | Find one order by confirm code + phone (Body: `{ "code", "phoneNumber" }`) |
+| `POST`  | `/api/orders/track-many`                | Public       | Fresh data for up to 20 orders at once (Body: `{ "orders": [{ "code", "phoneNumber" }] }`) |
 | `POST`  | `/api/orders/confirm`                   | `moderator+` | Confirm an order by hand (Body: `{ "code", "senderPhone" }`) |
 | `GET`   | `/api/orders/:id/confirmation`          | `bot`        | WhatsApp confirm status. 🚧 **Only exists when `WHATSAPP_BOT_ENABLED=true`** (otherwise `404`) |
 
@@ -515,6 +488,40 @@ The customer needs **both** the code and the phone number. The middleware `valid
 
 > The phone must match exactly: an order saved with `+970` is not found with `+972` (manual confirm treats them as the same, track does not).
 
+### Track many orders (`POST /api/orders/track-many`)
+
+Used by the "My orders" page: the browser saves `{ code, phoneNumber }` for each order, and asks for fresh data for all of them in **one** request (one database query).
+
+```json
+{
+  "orders": [
+    { "code": "K7P2XM", "phoneNumber": "+970599123456" },
+    { "code": "ABCDEF", "phoneNumber": "+970599123456" },
+    { "code": "bad", "phoneNumber": "+970599123456" }
+  ]
+}
+```
+
+Answer (same order and length as the request):
+
+```json
+{
+  "success": true,
+  "data": [
+    { "code": "K7P2XM", "phoneNumber": "+970599123456", "status": "found", "order": { "...": "..." } },
+    { "code": "ABCDEF", "phoneNumber": "+970599123456", "status": "notFound" },
+    { "code": "bad", "phoneNumber": "+970599123456", "status": "invalid" }
+  ]
+}
+```
+
+- `orders` must be an array with **1 to 20** items, or the whole request is refused with `400`.
+- Each item is checked with the same rules as `/track` (`validateTrackMany` in `validateTrackOrder.js`).
+- A bad item does **not** refuse the request. It comes back as `"invalid"`, so one broken saved order does not hide the others.
+- `code` and `phoneNumber` in the answer are what the browser sent, so it can match each answer to its saved order.
+- It never shows other orders of the same phone: only the orders whose code you send.
+- Rate limit: **60** requests.
+
 ### Manual confirm (`POST /api/orders/confirm`)
 
 ```json
@@ -533,66 +540,6 @@ The customer needs **both** the code and the phone number. The middleware `valid
 | No order with this code              | `404` | `NOT_FOUND`            |
 | Already confirmed                    | `409` | `ALREADY_CONFIRMED`    |
 | More than 24 hours passed            | `410` | `EXPIRED`              |
-
----
-
-# 🎟️ Order Tracking with a Guest Session
-
-This is another way to track orders, without sending the phone number with every request.
-
-## 1. Create a guest token
-
-```http
-POST /api/guest/sessions
-```
-
-Body:
-
-```json
-{
-  "phoneNumber": "+970599123456"
-}
-```
-
-> The number is cleaned with the same rules as checkout, then matched against the saved order number (country code + 9 digits). So `+970599123456`, `+9700599123456`, `+970 0599-123-456` and `00970599123456` all find the same orders. A number without a supported country code, or without 9 digits, returns **400**.
-
-If the phone number has at least one order, a token is created and returned:
-
-```json
-{
-  "success": true,
-  "token": "..."
-}
-```
-
-If there is no order for this number:
-
-```http
-404 Not Found
-```
-
----
-
-## 2. Get orders with the token
-
-```http
-GET /api/guest/orders
-x-guest-token: <token>
-```
-
-Returns the orders for the token's phone number, from **newest to oldest**.
-
-If the `x-guest-token` header is missing:
-
-```http
-400 Bad Request
-```
-
-If the token is invalid or expired (after 30 days):
-
-```http
-401 Unauthorized
-```
 
 ---
 
@@ -625,7 +572,7 @@ The project has these protections:
 
 ### 🚦 Rate Limiting
 
-Each endpoint has a maximum number of requests per **15 minutes** (per IP). The limit depends on how sensitive the endpoint is (for example: 5 for creating an admin, 10 for login and enabling/disabling admins, 30 for creating a guest session). Too many requests → `429`.
+Each endpoint has a maximum number of requests per **15 minutes** (per IP). The limit depends on how sensitive the endpoint is (for example: 5 for creating an admin, 10 for login and enabling/disabling admins, 20 for tracking one order, 60 for tracking many). Too many requests → `429`.
 
 The goal is to reduce API abuse.
 
@@ -686,15 +633,9 @@ There is also an automatic **rollback** if any part of a multi-product purchase 
 
 Admin passwords are hashed with **bcrypt**. They are never stored as plain text, and they are not returned in queries by default.
 
-### 🎟️ Guest Tokens
+### 🔎 Order Tracking
 
-Guest tokens are random, created with:
-
-```javascript
-crypto.randomBytes();
-```
-
-They expire automatically after **30 days**.
+There are no guest sessions or tokens. A customer sees an order only with **its confirmation code + its phone number**. There is no endpoint that lists all orders of a phone number, so knowing someone's number is not enough. The code is random (`crypto.randomInt`, about 887 million options) and tracking is rate limited.
 
 ### 🚫 No Caching
 
@@ -789,7 +730,7 @@ node scripts/seedPhoneShop.js --dry-run --replace  # show what --replace would d
 node scripts/seedPhoneShop.js --replace            # backup → delete ALL items → add the 22 products
 ```
 
-- `--replace` deletes **only the `items` collection**. Orders, carts, guest sessions and admins are not touched.
+- `--replace` deletes **only the `items` collection**. Orders, carts and admins are not touched.
 - Before deleting, it saves all current items to `backend/backups/items-<db>-<date>.json` and checks the file. The `backups/` folder is in `.gitignore`.
 - Old orders keep the item name and price inside them, so they still show correctly. Old carts may point to deleted items until they expire (7 days).
 - Before writing, it checks the same limits as the API (name length, price, quantity, 1–6 images).
@@ -840,15 +781,11 @@ MongoDB Atlas blocks IPs that are not in its list. Add your IP in Atlas → **Ne
 
 These are things I know need work, but I postponed them because of time or cost.
 
-### 📱 Phone ownership check with OTP/SMS
+### 📱 Seeing other people's orders by phone number — ✅ fixed
 
-Right now, anyone who knows a phone number with orders can get a guest token with `/api/guest/sessions`, and then see that person's orders.
+Before, `/api/guest/sessions` gave a token for **any** phone number, so anyone could see the orders of that number.
 
-This is because there is no step to check who owns the number.
-
-**Future fix:** an OTP system that sends a code to the phone before giving a guest token or showing orders.
-
-**Status:** started. The [`OtpCode`](#-otpcode) model exists, but sending the SMS and checking the code are not built yet.
+**Fix:** guest sessions were removed. Now an order is shown only with its **confirmation code + phone number** (`/track`, `/track-many`). Someone who makes a fake order with your number sees only that fake order, never your orders.
 
 ### 🤖 Automatic WhatsApp confirmation
 
@@ -882,7 +819,7 @@ For example, an empty cart at checkout returns `error` instead of `message`. It 
 
 ### 🧪 Missing tests
 
-`cart.test.js` has only one test, and there are no unit tests yet. Cart checkout, removing and changing cart items, admin management, guest sessions, and analytics have no tests yet.
+`cart.test.js` has only one test, and there are no unit tests yet. Cart checkout, removing and changing cart items, admin management, and analytics have no tests yet.
 
 ---
 
@@ -902,6 +839,6 @@ For example, an empty cart at checkout returns `error` instead of `message`. It 
 
 This project was hands-on practice for building a real backend with:
 
-**Express.js + MongoDB + Authentication + Authorization + Cart + Orders + Guest Sessions + Security + Testing**
+**Express.js + MongoDB + Authentication + Authorization + Cart + Orders + Order Tracking + Security + Testing**
 
 I focused on real-world cases, like stock conflicts, user roles, input validation, and protecting the API from abuse.

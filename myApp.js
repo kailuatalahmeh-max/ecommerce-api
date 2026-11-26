@@ -10,7 +10,6 @@ const dashboardRoutes = require("./src/routes/dashboardRoutes");
 const itemRoutes = require("./src/routes/itemRoutes");
 const cartRoutes = require("./src/routes/cartRoutes");
 const orderRoutes = require("./src/routes/orderRoutes");
-const guestRoutes = require("./src/routes/guestRoutes");
 
 const app = express();
 
@@ -65,7 +64,6 @@ app.use("/api/admins", adminRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/carts", cartRoutes);
 app.use("/api/orders", orderRoutes);
-app.use("/api/guest", guestRoutes);
 
 app.get("/health", createLimiter(1000), (req, res) => {
   return res.status(200).json({ status: "ok" });

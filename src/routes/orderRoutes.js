@@ -9,7 +9,10 @@ const { createLimiter } = require("../middlewares/rateLimiter");
 const { requireRole } = require("../middlewares/requireRole");
 const { validateObjectId } = require("../middlewares/validateObjectId");
 const { requireStoreWhatsApp } = require("../middlewares/requireStoreWhatsApp");
-const { validateTrackOrder } = require("../middlewares/validateTrackOrder");
+const {
+  validateTrackOrder,
+  validateTrackMany,
+} = require("../middlewares/validateTrackOrder");
 
 // Mounted at /api/orders
 
@@ -60,6 +63,20 @@ router.post(
   orderController.confirmOrderManually,
 );
 
-router.post("/track", createLimiter(20), validateTrackOrder, orderController.trackOrder);
+// الزبون: طلب واحد برمز التأكيد + رقم الهاتف
+router.post(
+  "/track",
+  createLimiter(20),
+  validateTrackOrder,
+  orderController.trackOrder,
+);
+
+// الزبون: بيانات جديدة لكل الطلبات المحفوظة في المتصفح (حتى 20 بطلب واحد)
+router.post(
+  "/track-many",
+  createLimiter(60),
+  validateTrackMany,
+  orderController.trackManyOrders,
+);
 
 module.exports = router;
