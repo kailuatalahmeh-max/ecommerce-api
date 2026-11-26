@@ -804,7 +804,7 @@ app.set("trust proxy", 1);
 
 | السكربت                       | الوظيفة                                                                                                  | التشغيل                                                  |
 | ----------------------------- | -------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
-| `addAdmin.js`                 | إضافة حساب أدمن يدوياً (راجع الملف لمعرفة طريقة الاستخدام)                                               | —                                                        |
+| `addAdmin.js`                 | إنشاء أول حساب أدمن. البريد وكلمة المرور من `.env` (انظر [أول أدمن](#-أول-أدمن-addadminjs))              | `node scripts/addAdmin.js` (من أي مجلد)                  |
 | `updateAdminsLastActivity.js` | ترحيل: يضيف `lastActivityAt` و`isActive` و`firstName` للأدمنز القدامى الذين لا يملكونها                  | `node updateAdminsLastActivity.js` (من `scripts/`)       |
 | `checkLegacyImageURL.js`      | فحص فقط: يعرض لكل منتج هل ما زال يملك الحقل القديم `imageURL` وعدد الصور في `images`                      | `node checkLegacyImageURL.js` (من `scripts/`)            |
 | `checkBeforeCleanup.js`       | فحص فقط: يتأكد أن كل المنتجات لديها `images` قبل حذف `imageURL` القديم                                    | `node checkBeforeCleanup.js` (من `scripts/`)             |
@@ -817,6 +817,27 @@ app.set("trust proxy", 1);
 ```bash
 DRY_RUN=false node scripts/cleanInvisibleChars.js
 ```
+
+### 👤 أول أدمن: `addAdmin.js`
+
+ينشئ أول حساب أدمن (عادةً `super_admin`)، حتى تستطيع الدخول لصفحات الأدمن. باقي الأدمنز يمكن إضافتهم من صفحة الأدمن **إنشاء حساب أدمن**.
+
+1. أضف هذه القيم إلى `backend/.env` (موجودة أيضاً في `.env.example` كتعليقات):
+
+   ```env
+   ADMIN_EMAIL=you@example.com
+   ADMIN_PASSWORD=a-strong-password
+   ADMIN_FULL_NAME=المدير العام      # اختياري
+   ADMIN_ROLE=super_admin           # اختياري: admin | moderator | super_admin
+   ```
+
+2. شغّل `node scripts/addAdmin.js`. يقرأ دائماً `backend/.env`، لذلك يعمل من أي مجلد.
+3. **احذف `ADMIN_PASSWORD` من `.env`** بعد أن ينجح.
+
+- يستخدم نفس قواعد `POST /api/admins`: بريد صحيح، كلمة مرور من 8 إلى 72 حرف، اسم أطول من 5 أحرف، وصلاحية صحيحة. إذا كان هناك خطأ، يعرض كل المشاكل ولا يتصل بقاعدة البيانات.
+- إذا كان البريد موجوداً، **لا يغيّر شيئاً** (كلمة المرور القديمة تبقى).
+- كلمة المرور تُحفظ مشفّرة (`bcrypt`) و**لا تُطبع أبداً**.
+- لا يوجد بريد أو كلمة مرور مكتوبة في الكود.
 
 ### 📱 بيانات تجريبية: `seedPhoneShop.js`
 

@@ -804,7 +804,7 @@ Scripts you run by hand from the command line. They connect to the database in `
 
 | Script                        | What it does                                                                                     | Run                                                    |
 | ----------------------------- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------ |
-| `addAdmin.js`                 | Add an admin account by hand (see the file for usage)                                            | —                                                      |
+| `addAdmin.js`                 | Create the first admin account. Email and password come from `.env` (see [First admin](#-first-admin-addadminjs)) | `node scripts/addAdmin.js` (from any folder)           |
 | `updateAdminsLastActivity.js` | Migration: adds `lastActivityAt`, `isActive`, and `firstName` to old admins that do not have them | `node updateAdminsLastActivity.js` (from `scripts/`)   |
 | `checkLegacyImageURL.js`      | Check only: shows for each product if it still has the old `imageURL` field, and how many `images` | `node checkLegacyImageURL.js` (from `scripts/`)        |
 | `checkBeforeCleanup.js`       | Check only: makes sure all products have `images` before deleting the old `imageURL`             | `node checkBeforeCleanup.js` (from `scripts/`)         |
@@ -817,6 +817,27 @@ To really run `cleanInvisibleChars.js` (not only show):
 ```bash
 DRY_RUN=false node scripts/cleanInvisibleChars.js
 ```
+
+### 👤 First admin: `addAdmin.js`
+
+Creates the first admin account (usually `super_admin`), so you can log in to the admin pages. Later admins can be added from the admin page **Create admin account**.
+
+1. Add these to `backend/.env` (they are also in `.env.example`, as comments):
+
+   ```env
+   ADMIN_EMAIL=you@example.com
+   ADMIN_PASSWORD=a-strong-password
+   ADMIN_FULL_NAME=المدير العام      # optional
+   ADMIN_ROLE=super_admin           # optional: admin | moderator | super_admin
+   ```
+
+2. Run `node scripts/addAdmin.js`. It always reads `backend/.env`, so it works from any folder.
+3. **Remove `ADMIN_PASSWORD` from `.env`** after it works.
+
+- It uses the same rules as `POST /api/admins`: a valid email, a password of 8 to 72 characters, a name longer than 5 characters, and a valid role. If something is wrong, it lists all the problems and does not connect to the database.
+- If the email already exists, it changes **nothing** (the old password stays).
+- The password is saved hashed (`bcrypt`) and is **never printed**.
+- No email or password is written in the code.
 
 ### 📱 Demo data: `seedPhoneShop.js`
 
