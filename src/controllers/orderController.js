@@ -13,6 +13,7 @@ const CONFIRM_ERRORS = {
   NOT_FOUND: { status: 404, message: "لا يوجد طلب بهذا الرمز!" },
   ALREADY_CONFIRMED: { status: 409, message: "هذا الطلب مؤكد مسبقاً" },
   EXPIRED: { status: 410, message: "انتهت صلاحية تأكيد هذا الطلب" },
+  CANCELLED: { status: 409, message: "هذا الطلب ملغي، لا يمكن تأكيده" },
   PHONE_MISMATCH: {
     status: 400,
     message: "رقم المرسل لا يطابق رقم الطلب!",
@@ -379,6 +380,60 @@ exports.trackManyOrders = async (req, res, next) => {
     });
 
     res.status(200).json({ success: true, data });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// POST /api/orders/cancel: the customer cancels an order with code + phone.
+// Only "Pending" orders (the store did not accept them yet). The stock comes back.
+exports.cancelOrder = async (req, res, next) => {
+  try {
+    const { code, phoneNumber } = res.locals.tracking;
+
+    // One atomic step: two cancel clicks at the same time return the stock once
+    const order = await Order.findOneAndUpdate(
+      { "confirmation.code": code, phoneNumber, status: "Pending" },
+      {
+        $set: {
+          status: "Cancelled",
+          cancelledAt: new Date(),
+          cancelledBy: "customer",
+        },
+      },
+      { returnDocument: "after" },
+    );
+
+    if (!order) {
+      const exists = await Order.exists({ "confirmation.code": code, phoneNumber });
+      if (!exists) {
+        return res.status(404).json({
+          success: false,
+          message: "رمز التأكيد أو رقم الهاتف غير صحيح",
+        });
+      }
+      return res.status(409).json({
+        success: false,
+        code: "NOT_CANCELLABLE",
+        message: "لا يمكن إلغاء هذا الطلب، تم قبوله أو إلغاؤه مسبقاً",
+      });
+    }
+
+    // Return the stock (an item that was deleted is skipped)
+    await Item.bulkWrite(
+      order.items.map((item) => ({
+        updateOne: {
+          filter: { _id: item.itemId },
+          update: { $inc: { itemQuantity: item.quantity } },
+        },
+      })),
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "تم إلغاء الطلب",
+      data: order,
+    });
   } catch (error) {
     next(error);
   }

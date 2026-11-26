@@ -79,4 +79,12 @@ router.post(
   orderController.trackManyOrders,
 );
 
+// الزبون: إلغاء طلب "Pending" برمز التأكيد + رقم الهاتف (المخزون يرجع)
+router.post(
+  "/cancel",
+  createLimiter(20),
+  validateTrackOrder,
+  orderController.cancelOrder,
+);
+
 module.exports = router;

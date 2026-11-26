@@ -40,6 +40,9 @@ const OrderSchema = new mongoose.Schema(
       enum: ["Pending", "Accepted", "Delivered", "Cancelled"],
     },
     confirmation: { type: ConfirmationSchema },
+    // Set when the customer cancels the order (POST /api/orders/cancel)
+    cancelledAt: { type: Date },
+    cancelledBy: { type: String, enum: ["customer"] },
   },
   { timestamps: true },
 );

@@ -170,12 +170,12 @@ Tests use **[mongodb-memory-server](https://github.com/typegoose/mongodb-memory-
 | File                    | What it tests                                                                                                   |
 | ----------------------- | --------------------------------------------------------------------------------------------------------------- |
 | `items.test.js`         | Get products, add and edit by an admin, reject missing or invalid tokens, reject disabled admins, reject invalid data (negative price, `javascript:` links), invalid or missing IDs |
-| `orders.test.js`        | Direct purchase: success updates stock and total; rejects invalid ID, invalid quantity, quantity bigger than stock, missing product. **Stock conflict:** two requests at the same time for stock that is enough for only one → one `201`, one `400`, and only `1` order saved. **WhatsApp confirm:** purchase returns a code and a `wa.me` link; `503` with no store number; `GET /:id/confirmation` is `404` while the bot is off; a moderator confirms only once (`409` the second time); wrong phone → `PHONE_MISMATCH`; role `admin` → `403`. **Tracking:** `/track` cleans a messy code and phone, refuses objects (injection) and a wrong phone; `/track-many` answers `found` / `notFound` / `invalid` in order, never shows other orders of the same phone, refuses an empty or too long list (more than 20); the old `/api/guest/sessions` is `404` |
+| `orders.test.js`        | Direct purchase: success updates stock and total; rejects invalid ID, invalid quantity, quantity bigger than stock, missing product. **Stock conflict:** two requests at the same time for stock that is enough for only one → one `201`, one `400`, and only `1` order saved. **WhatsApp confirm:** purchase returns a code and a `wa.me` link; `503` with no store number; `GET /:id/confirmation` is `404` while the bot is off; a moderator confirms only once (`409` the second time); wrong phone → `PHONE_MISMATCH`; role `admin` → `403`. **Tracking:** `/track` cleans a messy code and phone, refuses objects (injection) and a wrong phone; `/track-many` answers `found` / `notFound` / `invalid` in order, never shows other orders of the same phone, refuses an empty or too long list (more than 20); the old `/api/guest/sessions` is `404`. **Cancel:** `/cancel` cancels a `Pending` order once and returns the stock (a second click → `409`, the stock is not returned twice); refuses a wrong phone (`404`), injection (`400`) and an `Accepted` order (`409`); a cancelled order can't be confirmed (`CANCELLED`) |
 | `auth.test.js`          | Admin routes return `401` with no token, a fake token, or a valid token for an admin that does not exist        |
 | `health.test.js`        | `GET /health` returns `200`                                                                                     |
 | `cart.test.js`          | Adding the same item twice adds up the quantity in **one** cart row (2 + 3 = 5), and adding to the cart does not take stock |
 
-All **35 tests** pass.
+All **38 tests** pass.
 
 ---
 
@@ -274,6 +274,8 @@ The cart is deleted automatically **7 days** after its last update (TTL index on
 | `totalPrice`   | `Number` | Required                                                         |
 | `status`       | `String` | `Pending` (default) / `Accepted` / `Delivered` / `Cancelled`     |
 | `confirmation` | `Object` | WhatsApp confirmation (see below). Old orders do not have it     |
+| `cancelledAt`  | `Date`   | When the customer cancelled the order (optional)                 |
+| `cancelledBy`  | `String` | `customer` when the customer cancelled it (optional)             |
 
 `confirmation` fields:
 
@@ -383,6 +385,7 @@ The `guestId` is sent in the URL and is validated before the request runs. Produ
 | `PATCH` | `/api/orders/:orderId`                  | `moderator+` | Change order status (Body: `{ "status" }`)        |
 | `POST`  | `/api/orders/track`                     | Public       | Find one order by confirm code + phone (Body: `{ "code", "phoneNumber" }`) |
 | `POST`  | `/api/orders/track-many`                | Public       | Fresh data for up to 20 orders at once (Body: `{ "orders": [{ "code", "phoneNumber" }] }`) |
+| `POST`  | `/api/orders/cancel`                    | Public       | The customer cancels a `Pending` order with code + phone (Body: `{ "code", "phoneNumber" }`). The stock comes back |
 | `POST`  | `/api/orders/confirm`                   | `moderator+` | Confirm an order by hand (Body: `{ "code", "senderPhone" }`) |
 | `GET`   | `/api/orders/:id/confirmation`          | `bot`        | WhatsApp confirm status. 🚧 **Only exists when `WHATSAPP_BOT_ENABLED=true`** (otherwise `404`) |
 
@@ -522,6 +525,31 @@ Answer (same order and length as the request):
 - It never shows other orders of the same phone: only the orders whose code you send.
 - Rate limit: **60** requests.
 
+### Customer cancel (`POST /api/orders/cancel`)
+
+Used by the **Cancel order** button in "My orders".
+
+```json
+{ "code": "K7P2XM", "phoneNumber": "+970599123456" }
+```
+
+- The code and phone are checked with the same rules as `/track` (`validateTrackOrder`).
+- Only a **`Pending`** order can be cancelled (the store did not accept it yet).
+- The order becomes `Cancelled`, with `cancelledAt` and `cancelledBy: "customer"`.
+- The **stock comes back**: each item gets its quantity again. A deleted item is skipped.
+- It is one atomic update (`findOneAndUpdate` with `status: "Pending"`). So two clicks at the same time return the stock only once.
+- A cancelled order can't be confirmed any more (`CANCELLED` in the manual confirm table).
+- Rate limit: **20** requests.
+
+| Case                                      | Code  | `code` in the response |
+| ----------------------------------------- | ----- | ---------------------- |
+| Cancelled (the answer has the order)      | `200` | —                      |
+| Bad code or phone                         | `400` | —                      |
+| No order with this code + phone           | `404` | —                      |
+| Accepted, Delivered or already Cancelled  | `409` | `NOT_CANCELLABLE`      |
+
+> ⚠️ When an **admin** changes an order to `Cancelled` (`PATCH /api/orders/:orderId`), the stock does **not** come back yet.
+
 ### Manual confirm (`POST /api/orders/confirm`)
 
 ```json
@@ -539,6 +567,7 @@ Answer (same order and length as the request):
 | The phone is not the order's number  | `400` | `PHONE_MISMATCH`       |
 | No order with this code              | `404` | `NOT_FOUND`            |
 | Already confirmed                    | `409` | `ALREADY_CONFIRMED`    |
+| The customer cancelled the order     | `409` | `CANCELLED`            |
 | More than 24 hours passed            | `410` | `EXPIRED`              |
 
 ---
@@ -572,7 +601,7 @@ The project has these protections:
 
 ### 🚦 Rate Limiting
 
-Each endpoint has a maximum number of requests per **15 minutes** (per IP). The limit depends on how sensitive the endpoint is (for example: 5 for creating an admin, 10 for login and enabling/disabling admins, 20 for tracking one order, 60 for tracking many). Too many requests → `429`.
+Each endpoint has a maximum number of requests per **15 minutes** (per IP). The limit depends on how sensitive the endpoint is (for example: 5 for creating an admin, 10 for login and enabling/disabling admins, 20 for tracking one order, 60 for tracking many, 20 for cancelling). Too many requests → `429`.
 
 The goal is to reduce API abuse.
 

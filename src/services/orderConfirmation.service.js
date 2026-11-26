@@ -48,6 +48,7 @@ async function confirmOrderByCode({ code, senderPhone, method }) {
 
   const order = await Order.findOne({ "confirmation.code": cleanCode });
   if (!order) return { ok: false, reason: "NOT_FOUND" };
+  if (order.status === "Cancelled") return { ok: false, reason: "CANCELLED" };
 
   const { status, expiresAt } = order.confirmation;
   if (status === "confirmed") return { ok: false, reason: "ALREADY_CONFIRMED" };
@@ -63,6 +64,7 @@ async function confirmOrderByCode({ code, senderPhone, method }) {
   const updated = await Order.findOneAndUpdate(
     {
       _id: order._id,
+      status: { $ne: "Cancelled" }, // the customer may cancel at the same moment
       "confirmation.status": "pending",
       "confirmation.expiresAt": { $gt: new Date() },
     },

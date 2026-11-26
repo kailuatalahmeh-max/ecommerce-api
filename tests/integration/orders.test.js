@@ -331,6 +331,72 @@ describe("Track orders by code + phone", () => {
     }
   });
 
+  it("POST /cancel cancels a Pending order once and returns the stock", async () => {
+    const { testItem } = await addTestItem(); // stock 10
+    const buyRes = await request(app)
+      .post(URL)
+      .send(createTestOrder(testItem._id, { quantity: 3 }));
+    const { orderId, confirmCode } = buyRes.body.data;
+    expect((await Item.findById(testItem._id)).itemQuantity).toBe(7);
+
+    const cancel = () =>
+      request(app)
+        .post(`${URL}/cancel`)
+        .send({ code: confirmCode.toLowerCase(), phoneNumber: PHONE });
+
+    const first = await cancel();
+    expect(first.status).toBe(200);
+    expect(first.body.data.status).toBe("Cancelled");
+
+    const saved = await Order.findById(orderId).lean();
+    expect(saved.status).toBe("Cancelled");
+    expect(saved.cancelledBy).toBe("customer");
+    expect((await Item.findById(testItem._id)).itemQuantity).toBe(10);
+
+    // second click: refused, and the stock is not returned twice
+    const second = await cancel();
+    expect(second.status).toBe(409);
+    expect(second.body.code).toBe("NOT_CANCELLABLE");
+    expect((await Item.findById(testItem._id)).itemQuantity).toBe(10);
+  });
+
+  it("POST /cancel refuses accepted orders, wrong phones and bad input", async () => {
+    const { orderId, confirmCode } = await buy();
+
+    const wrongPhone = await request(app)
+      .post(`${URL}/cancel`)
+      .send({ code: confirmCode, phoneNumber: "+970591111111" });
+    expect(wrongPhone.status).toBe(404);
+
+    const injection = await request(app)
+      .post(`${URL}/cancel`)
+      .send({ code: { $ne: null }, phoneNumber: PHONE });
+    expect(injection.status).toBe(400);
+
+    await Order.findByIdAndUpdate(orderId, { status: "Accepted" });
+    const accepted = await request(app)
+      .post(`${URL}/cancel`)
+      .send({ code: confirmCode, phoneNumber: PHONE });
+    expect(accepted.status).toBe(409);
+    expect((await Order.findById(orderId)).status).toBe("Accepted");
+  });
+
+  it("a cancelled order cannot be confirmed by the moderator", async () => {
+    const { confirmCode } = await buy();
+    await request(app)
+      .post(`${URL}/cancel`)
+      .send({ code: confirmCode, phoneNumber: PHONE });
+
+    const { token } = await createTestAdmin("moderator");
+    const res = await request(app)
+      .post(`${URL}/confirm`)
+      .set("Authorization", `Bearer ${token}`)
+      .send({ code: confirmCode, senderPhone: PHONE });
+
+    expect(res.status).toBe(409);
+    expect(res.body.code).toBe("CANCELLED");
+  });
+
   it("the old guest session routes are gone", async () => {
     const res = await request(app)
       .post("/api/guest/sessions")
