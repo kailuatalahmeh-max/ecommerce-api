@@ -40,6 +40,7 @@ A backend for an online store, built with **Express.js** and **MongoDB**. It sup
 
 ```text
 backend/
+├── .env.example          # Example env variables (copy it to .env)
 ├── myApp.js              # Express app (middlewares and routes) — imported by the tests
 ├── server.js             # Entry point: connects to the database, starts the server and the expired orders job
 ├── backups/              # JSON backups made by seedPhoneShop.js (ignored by git)
@@ -91,7 +92,13 @@ npm install
 
 ### 2. Environment variables
 
-Create a `.env` file **inside `backend/`**:
+Copy the example file, then fill in your own values (**inside `backend/`**):
+
+```bash
+cp .env.example .env
+```
+
+`.env.example` lists every variable with a short note (it has no real secrets, so it is in git). The real `.env` is never committed. The variables:
 
 ```env
 PORT=5000

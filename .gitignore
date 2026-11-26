@@ -2,5 +2,7 @@
 .env
 .env.testing
 .env.*
+# The example file has no secrets, so it is shared
+!.env.example
 .DS_Store
 /backups/
