@@ -486,3 +486,71 @@ describe("Admin changes the order status (stock)", () => {
     expect(await stock()).toBe(10);
   });
 });
+
+describe("Expired orders return the stock", () => {
+  const { expireOldOrders } = require("../../src/services/expireOrders.service");
+  const PAST = new Date(Date.now() - 60 * 1000);
+
+  // stock 10, buy 3 → stock 7
+  const buyThree = async () => {
+    const { testItem } = await addTestItem();
+    const res = await request(app)
+      .post(URL)
+      .send(createTestOrder(testItem._id, { quantity: 3 }));
+    expect(res.status).toBe(201);
+    const stock = async () => (await Item.findById(testItem._id)).itemQuantity;
+    return { orderId: res.body.data.orderId, stock };
+  };
+
+  it("an expired Pending order is cancelled and its stock comes back, only once", async () => {
+    const { orderId, stock } = await buyThree();
+    await Order.findByIdAndUpdate(orderId, { "confirmation.expiresAt": PAST });
+
+    expect(await expireOldOrders()).toBe(1);
+    expect(await stock()).toBe(10);
+
+    const saved = await Order.findById(orderId).lean();
+    expect(saved.status).toBe("Cancelled");
+    expect(saved.confirmation.status).toBe("expired");
+    expect(saved.cancelledBy).toBe("system");
+
+    // the job runs again: nothing changes
+    expect(await expireOldOrders()).toBe(0);
+    expect(await stock()).toBe(10);
+  });
+
+  it("does not touch orders that are not expired, confirmed, or accepted", async () => {
+    const fresh = await buyThree(); // still has 24 hours
+
+    const confirmed = await buyThree();
+    await Order.findByIdAndUpdate(confirmed.orderId, {
+      "confirmation.status": "confirmed",
+      "confirmation.expiresAt": PAST,
+    });
+
+    const accepted = await buyThree();
+    await Order.findByIdAndUpdate(accepted.orderId, {
+      status: "Accepted",
+      "confirmation.expiresAt": PAST,
+    });
+
+    expect(await expireOldOrders()).toBe(0);
+    for (const o of [fresh, confirmed, accepted]) {
+      expect(await o.stock()).toBe(7);
+    }
+    expect((await Order.findById(accepted.orderId)).status).toBe("Accepted");
+  });
+
+  it("an order the customer already cancelled is not returned twice", async () => {
+    const { orderId, stock } = await buyThree();
+    const { confirmation } = await Order.findById(orderId).lean();
+    await request(app)
+      .post(`${URL}/cancel`)
+      .send({ code: confirmation.code, phoneNumber: "+970599123456" });
+    expect(await stock()).toBe(10);
+
+    await Order.findByIdAndUpdate(orderId, { "confirmation.expiresAt": PAST });
+    expect(await expireOldOrders()).toBe(0);
+    expect(await stock()).toBe(10);
+  });
+});

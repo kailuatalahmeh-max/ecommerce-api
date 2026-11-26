@@ -41,7 +41,7 @@ A backend for an online store, built with **Express.js** and **MongoDB**. It sup
 ```text
 backend/
 ├── myApp.js              # Express app (middlewares and routes) — imported by the tests
-├── server.js             # Entry point: connects to the database, then starts the server
+├── server.js             # Entry point: connects to the database, starts the server and the expired orders job
 ├── backups/              # JSON backups made by seedPhoneShop.js (ignored by git)
 ├── scripts/              # Maintenance, data migration and seed scripts (run by hand)
 ├── src/
@@ -50,7 +50,7 @@ backend/
 │   ├── middlewares/      # Auth, roles, validation, rate limiting, error handling, store WhatsApp check
 │   ├── models/           # Admin, Cart, Item, Order, StoreSettings
 │   ├── routes/           # Route definitions
-│   ├── services/         # orderConfirmation.service.js (WhatsApp confirm code)
+│   ├── services/         # orderConfirmation (WhatsApp confirm code), stock (return / take stock), expireOrders (expired orders job)
 │   └── utils/            # Shared constants (constants.js), phone number cleaning (phone.js)
 └── tests/
     ├── setup/            # Test database connection
@@ -170,12 +170,12 @@ Tests use **[mongodb-memory-server](https://github.com/typegoose/mongodb-memory-
 | File                    | What it tests                                                                                                   |
 | ----------------------- | --------------------------------------------------------------------------------------------------------------- |
 | `items.test.js`         | Get products, add and edit by an admin, reject missing or invalid tokens, reject disabled admins, reject invalid data (negative price, `javascript:` links), invalid or missing IDs |
-| `orders.test.js`        | Direct purchase: success updates stock and total; rejects invalid ID, invalid quantity, quantity bigger than stock, missing product. **Stock conflict:** two requests at the same time for stock that is enough for only one → one `201`, one `400`, and only `1` order saved. **WhatsApp confirm:** purchase returns a code and a `wa.me` link; `503` with no store number; `GET /:id/confirmation` is `404` while the bot is off; a moderator confirms only once (`409` the second time); wrong phone → `PHONE_MISMATCH`; role `admin` → `403`. **Tracking:** `/track` cleans a messy code and phone, refuses objects (injection) and a wrong phone; `/track-many` answers `found` / `notFound` / `invalid` in order, never shows other orders of the same phone, refuses an empty or too long list (more than 20); the old `/api/guest/sessions` is `404`. **Cancel:** `/cancel` cancels a `Pending` order once and returns the stock (a second click → `409`, the stock is not returned twice); refuses a wrong phone (`404`), injection (`400`) and an `Accepted` order (`409`); a cancelled order can't be confirmed (`CANCELLED`). **Admin status:** admin cancel returns the stock once (`cancelledBy: "admin"`); opening it again takes the stock again, or is refused with `NOT_ENOUGH_STOCK`; other status changes don't touch the stock; the customer can't cancel an order the admin cancelled |
+| `orders.test.js`        | Direct purchase: success updates stock and total; rejects invalid ID, invalid quantity, quantity bigger than stock, missing product. **Stock conflict:** two requests at the same time for stock that is enough for only one → one `201`, one `400`, and only `1` order saved. **WhatsApp confirm:** purchase returns a code and a `wa.me` link; `503` with no store number; `GET /:id/confirmation` is `404` while the bot is off; a moderator confirms only once (`409` the second time); wrong phone → `PHONE_MISMATCH`; role `admin` → `403`. **Tracking:** `/track` cleans a messy code and phone, refuses objects (injection) and a wrong phone; `/track-many` answers `found` / `notFound` / `invalid` in order, never shows other orders of the same phone, refuses an empty or too long list (more than 20); the old `/api/guest/sessions` is `404`. **Cancel:** `/cancel` cancels a `Pending` order once and returns the stock (a second click → `409`, the stock is not returned twice); refuses a wrong phone (`404`), injection (`400`) and an `Accepted` order (`409`); a cancelled order can't be confirmed (`CANCELLED`). **Admin status:** admin cancel returns the stock once (`cancelledBy: "admin"`); opening it again takes the stock again, or is refused with `NOT_ENOUGH_STOCK`; other status changes don't touch the stock; the customer can't cancel an order the admin cancelled. **Expired:** an expired `Pending` order becomes `Cancelled` (`cancelledBy: "system"`) and its stock comes back only once; fresh, confirmed and accepted orders are not touched; an order the customer already cancelled is not returned twice |
 | `auth.test.js`          | Admin routes return `401` with no token, a fake token, or a valid token for an admin that does not exist        |
 | `health.test.js`        | `GET /health` returns `200`                                                                                     |
 | `cart.test.js`          | Adding the same item twice adds up the quantity in **one** cart row (2 + 3 = 5), and adding to the cart does not take stock |
 
-All **43 tests** pass.
+All **46 tests** pass.
 
 ---
 
@@ -275,7 +275,7 @@ The cart is deleted automatically **7 days** after its last update (TTL index on
 | `status`       | `String` | `Pending` (default) / `Accepted` / `Delivered` / `Cancelled`     |
 | `confirmation` | `Object` | WhatsApp confirmation (see below). Old orders do not have it     |
 | `cancelledAt`  | `Date`   | When the order was cancelled (optional)                          |
-| `cancelledBy`  | `String` | `customer` or `admin`: who cancelled it (optional)               |
+| `cancelledBy`  | `String` | `customer`, `admin`, or `system` (confirmation expired): who cancelled it (optional) |
 
 `confirmation` fields:
 
@@ -553,6 +553,17 @@ Used by the **Cancel order** button in "My orders".
 > - Out of `Cancelled` (opened again): the stock is taken again, and `cancelledAt` / `cancelledBy` are removed. If one item has not enough stock (or was deleted), nothing changes and the answer is `400` `NOT_ENOUGH_STOCK`.
 > - Between other statuses (`Pending` / `Accepted` / `Delivered`): the stock does not change.
 > - The update works only if the status did not change in the meantime, so two clicks move the stock only once. Otherwise: `409` `STATUS_CHANGED`.
+
+### ⏳ Expired orders (stock comes back)
+
+An order that is **not confirmed on WhatsApp in 24 hours** is cancelled by the server (`src/services/expireOrders.service.js`):
+
+- `server.js` starts the job after the database connects. It runs **once at start** (to catch up after the server was asleep), then **every 10 minutes**. Tests don't start it.
+- It looks for orders with `status: "Pending"`, `confirmation.status: "pending"` and `confirmation.expiresAt` in the past (the index on `confirmation.status` + `confirmation.expiresAt` makes this fast).
+- Each one becomes `status: "Cancelled"`, `confirmation.status: "expired"`, `cancelledBy: "system"`, and its **stock comes back** (`returnStock` in `src/services/stock.service.js`).
+- One atomic update per order, so the stock comes back only once (even if the customer cancels at the same moment).
+- **Not touched:** confirmed orders, and orders the admin already accepted.
+- An admin can open an expired order again: the stock is taken again, or the change is refused with `NOT_ENOUGH_STOCK`.
 
 ### Manual confirm (`POST /api/orders/confirm`)
 
