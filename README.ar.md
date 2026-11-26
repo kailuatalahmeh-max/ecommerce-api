@@ -67,6 +67,7 @@ backend/
 | `authRoutes.js`      | `/api/auth`      | تسجيل دخول الأدمن           |
 | `adminRoutes.js`     | `/api/admins`    | إدارة حسابات الأدمن         |
 | `dashboardRoutes.js` | `/api/dashboard` | الإحصائيات                  |
+| `storeSettingsRoutes.js` | `/api/store-settings` | رقم واتساب المتجر (`super_admin`) |
 | `itemRoutes.js`      | `/api/items`     | المنتجات                    |
 | `cartRoutes.js`      | `/api/carts`     | السلة                       |
 | `orderRoutes.js`     | `/api/orders`    | الطلبات                     |
@@ -174,8 +175,9 @@ npm test
 | `auth.test.js`            | مسارات الأدمن ترجع `401` بدون توكن، أو بتوكن مزيّف، أو بتوكن صحيح لأدمن غير موجود                              |
 | `health.test.js`          | `GET /health` يرجع `200`                                                                                        |
 | `cart.test.js`            | إضافة نفس المنتج مرتين تجمع الكمية في **سطر واحد** في السلة (2 + 3 = 5)، والإضافة للسلة لا تُنقص المخزون |
+| `storeSettings.test.js`   | `super_admin` يحفظ رقماً فيه مسافات فيُحفظ نظيفاً (`+970599111222`)، ومستند إعدادات واحد فقط؛ `GET` يرجع `null` بدون رقم؛ الرقم الخاطئ أو الفارغ أو الكائن أو كود دولة غير مدعوم ← `400` `INVALID_PHONE` والرقم القديم يبقى؛ `admin` و`moderator` ← `403`، وبدون توكن ← `401` |
 
-جميع الاختبارات (**46**) تنجح.
+جميع الاختبارات (**50**) تنجح.
 
 ---
 
@@ -301,7 +303,7 @@ Authorization: Bearer <token>
 | `whatsappNumber` | `String`   | رقم واتساب المتجر. يُنظَّف بـ `normalizePhone`، مثل `+970599123456`   |
 | `updatedBy`      | `ObjectId` | الأدمن الذي غيّره (اختياري)                                          |
 
-> ⚠️ إذا لم يوجد `whatsappNumber`، **يتم منع كل عمليات الشراء** بـ `503` ("الشراء غير متاح حالياً"). احفظه باستخدام [`storeSettingsSeed.js`](#-رقم-واتساب-المتجر-storesettingsseedjs).
+> ⚠️ إذا لم يوجد `whatsappNumber`، **يتم منع كل عمليات الشراء** بـ `503` ("الشراء غير متاح حالياً"). احفظه من صفحة الأدمن **⚙️ إعدادات المتجر** (`super_admin`، انظر [إعدادات المتجر](#️-إعدادات-المتجر-store-settings))، أو باستخدام [`storeSettingsSeed.js`](#-رقم-واتساب-المتجر-storesettingsseedjs).
 
 ---
 
@@ -587,6 +589,36 @@ Cancelled
 
 ---
 
+# ⚙️ إعدادات المتجر (Store Settings)
+
+فقط `super_admin` يستطيع رؤيتها أو تغييرها. تستخدمها صفحة الـ Frontend `/admin/store-settings`.
+
+| الطريقة | المسار                | الصلاحية      | الوصف                                            |
+| ------- | --------------------- | ------------- | ------------------------------------------------ |
+| `GET`   | `/api/store-settings` | `super_admin` | رقم واتساب المتجر، ومتى ومن غيّره                |
+| `PUT`   | `/api/store-settings` | `super_admin` | حفظ رقم واتساب المتجر (Body: `{ "whatsappNumber" }`) |
+
+رد `GET` (`whatsappNumber` يكون `null` إذا لا يوجد رقم محفوظ):
+
+```json
+{
+  "success": true,
+  "data": {
+    "whatsappNumber": "+970599123456",
+    "updatedAt": "2026-11-26T12:00:00.000Z",
+    "updatedBy": "Super Admin"
+  }
+}
+```
+
+- `PUT` ينظّف الرقم بـ `normalizePhone` (`"+970 0599-123-456"` ← `"+970599123456"`). الرقم الخاطئ ← `400` `INVALID_PHONE`، والرقم القديم يبقى.
+- يحفظ `updatedBy` (الأدمن الذي غيّره). يوجد دائماً مستند إعدادات **واحد** (`key: "main"`، upsert).
+- يمكن **تغيير** الرقم لكن **لا يمكن حذفه**: بدون رقم، كل عمليات الشراء تتوقف (`503`).
+- حد الطلبات: 100 لـ `GET`، و20 لـ `PUT`.
+- السكربت [`storeSettingsSeed.js`](#-رقم-واتساب-المتجر-storesettingsseedjs) ما زال يعمل (للإعداد الأول، قبل دخول أي `super_admin`).
+
+---
+
 # 📊 الإحصائيات (Analytics)
 
 الإحصائيات متاحة فقط لـ `super_admin`.
@@ -804,6 +836,8 @@ node scripts/storeSettingsSeed.js +970599123456
 ```
 
 شغّله مرة أخرى برقم آخر لتغييره. الرقم الخاطئ يُرفض.
+
+> يمكنك أيضاً تغيير الرقم من صفحة الأدمن **⚙️ إعدادات المتجر** (`super_admin`).
 
 ### ترحيل الصور من `imageURL` إلى `images`
 

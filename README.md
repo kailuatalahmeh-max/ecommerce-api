@@ -67,6 +67,7 @@ backend/
 | `authRoutes.js`       | `/api/auth`      | Admin login                              |
 | `adminRoutes.js`      | `/api/admins`    | Admin account management                 |
 | `dashboardRoutes.js`  | `/api/dashboard` | Analytics                                |
+| `storeSettingsRoutes.js` | `/api/store-settings` | Store WhatsApp number (`super_admin`) |
 | `itemRoutes.js`       | `/api/items`     | Products                                 |
 | `cartRoutes.js`       | `/api/carts`     | Cart                                     |
 | `orderRoutes.js`      | `/api/orders`    | Orders                                   |
@@ -174,8 +175,9 @@ Tests use **[mongodb-memory-server](https://github.com/typegoose/mongodb-memory-
 | `auth.test.js`          | Admin routes return `401` with no token, a fake token, or a valid token for an admin that does not exist        |
 | `health.test.js`        | `GET /health` returns `200`                                                                                     |
 | `cart.test.js`          | Adding the same item twice adds up the quantity in **one** cart row (2 + 3 = 5), and adding to the cart does not take stock |
+| `storeSettings.test.js` | `super_admin` saves a messy number and it is saved clean (`+970599111222`), only one settings document; `GET` gives `null` with no number; a bad, empty, object or unknown country number → `400` `INVALID_PHONE` and the old number stays; `admin` and `moderator` → `403`, no token → `401` |
 
-All **46 tests** pass.
+All **50 tests** pass.
 
 ---
 
@@ -301,7 +303,7 @@ One document for the whole store (`key: "main"`).
 | `whatsappNumber` | `String`   | The store's WhatsApp number. Cleaned with `normalizePhone`, e.g. `+970599123456` |
 | `updatedBy`      | `ObjectId` | The admin who changed it (optional)                                       |
 
-> ⚠️ If there is no `whatsappNumber`, **all purchases are blocked** with `503` ("الشراء غير متاح حالياً"). Set it with [`storeSettingsSeed.js`](#-store-whatsapp-number-storesettingsseedjs).
+> ⚠️ If there is no `whatsappNumber`, **all purchases are blocked** with `503` ("الشراء غير متاح حالياً"). Set it in the admin page **⚙️ Store settings** (`super_admin`, see [Store Settings](#-store-settings)), or with [`storeSettingsSeed.js`](#-store-whatsapp-number-storesettingsseedjs).
 
 ---
 
@@ -587,6 +589,36 @@ An order that is **not confirmed on WhatsApp in 24 hours** is cancelled by the s
 
 ---
 
+# ⚙️ Store Settings
+
+Only `super_admin` can see or change them. Used by the frontend page `/admin/store-settings`.
+
+| Method | Endpoint              | Role          | Description                                      |
+| ------ | --------------------- | ------------- | ------------------------------------------------ |
+| `GET`  | `/api/store-settings` | `super_admin` | The store WhatsApp number, when and by whom it was changed |
+| `PUT`  | `/api/store-settings` | `super_admin` | Save the store WhatsApp number (Body: `{ "whatsappNumber" }`) |
+
+`GET` answer (`whatsappNumber` is `null` when no number is saved):
+
+```json
+{
+  "success": true,
+  "data": {
+    "whatsappNumber": "+970599123456",
+    "updatedAt": "2026-11-26T12:00:00.000Z",
+    "updatedBy": "Super Admin"
+  }
+}
+```
+
+- `PUT` cleans the number with `normalizePhone` (`"+970 0599-123-456"` → `"+970599123456"`). A bad number → `400` `INVALID_PHONE`, and the old number stays.
+- It saves `updatedBy` (the admin who changed it). There is always **one** settings document (`key: "main"`, upsert).
+- The number can be **changed but not removed**: with no number, all purchases stop (`503`).
+- Rate limit: 100 for `GET`, 20 for `PUT`.
+- The script [`storeSettingsSeed.js`](#-store-whatsapp-number-storesettingsseedjs) still works (for the first setup, before any `super_admin` logs in).
+
+---
+
 # 📊 Analytics
 
 Only `super_admin` can see analytics.
@@ -804,6 +836,8 @@ node scripts/storeSettingsSeed.js +970599123456
 ```
 
 Run it again with another number to change it. A wrong number is rejected.
+
+> You can also change the number in the admin page **⚙️ Store settings** (`super_admin`).
 
 ### Image migration from `imageURL` to `images`
 
